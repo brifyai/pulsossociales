@@ -22,11 +22,11 @@ RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.2/install.sh | b
     nvm use 18
 
 # Add NVM to PATH
-ENV NVM_DIR /root/.nvm
-ENV NODE_VERSION 18.0.0
+ENV NVM_DIR=/root/.nvm
+ENV NODE_VERSION=18.0.0
 RUN . $NVM_DIR/nvm.sh && nvm install $NODE_VERSION
-ENV NODE_PATH $NVM_DIR/versions/node/v$NODE_VERSION/lib/node_modules
-ENV PATH $NVM_DIR/versions/node/v$NODE_VERSION/bin:$PATH
+ENV NODE_PATH=$NVM_DIR/versions/node/v$NODE_VERSION/lib/node_modules
+ENV PATH=$NVM_DIR/versions/node/v$NODE_VERSION/bin:$PATH
 
 # Set the working directory
 WORKDIR /usr/src/app
@@ -43,6 +43,6 @@ RUN npx update-browserslist-db@latest
 COPY . .
 
 # Expose necessary ports
-EXPOSE 5173
+EXPOSE 4110
 
-CMD ["npx", "vite", "--host"]
+CMD ["npx", "vite", "--host", "--port", "4110"]
