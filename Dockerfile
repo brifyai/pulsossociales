@@ -42,7 +42,14 @@ RUN npx update-browserslist-db@latest
 # Copy application files
 COPY . .
 
+# Build the application
+RUN npm run build
+
+# Install serve for production
+RUN npm install -g serve
+
 # Expose necessary ports
 EXPOSE 4110
 
-CMD ["npx", "vite", "--host", "--port", "4110"]
+# Serve the built application
+CMD ["serve", "-s", "dist", "-l", "4110"]
