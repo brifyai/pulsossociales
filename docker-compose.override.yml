@@ -7,47 +7,92 @@ services:
   db:
     ports:
       - "5433:5432"
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-postgres}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
 
   # Supavisor (connection pooler) - change port from 6543 to 6544 to avoid conflict
   supavisor:
     ports:
       - "6544:6543"
+    environment:
+      POOLER_PROXY_PORT_TRANSACTION: 6543
+      POOLER_DEFAULT_POOL_SIZE: 20
+      POOLER_MAX_CLIENT_CONN: 100
+      DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-postgres}
 
   # Kong (API Gateway) - change port from 8000 to 8001
   kong:
     ports:
       - "8001:8000"
       - "8444:8443"
+    environment:
+      KONG_DATABASE: "off"
+      KONG_DECLARATIVE_CONFIG: /home/kong/kong.yml
+      KONG_DNS_ORDER: LAST,A,CNAME
 
   # Analytics (Logflare) - change port from 4000 to 4001
   analytics:
     ports:
       - "4001:4000"
+    environment:
+      LOGFLARE_SINGLE_TENANT: "true"
+      LOGFLARE_SUPABASE_MODE: "true"
 
   # Studio (Supabase Dashboard) - change port from 3000 to 3001
   studio:
     ports:
       - "3001:3000"
+    environment:
+      STUDIO_DEFAULT_ORGANIZATION: "Default Organization"
+      STUDIO_DEFAULT_PROJECT: "Default Project"
+      SUPABASE_PUBLIC_URL: http://localhost:8000
 
   # Auth (GoTrue) - change port from 9999 to 9998
   auth:
     ports:
       - "9998:9999"
+    environment:
+      GOTRUE_JWT_SECRET: ${GOTRUE_JWT_SECRET:-super-secret-jwt-token}
+      GOTRUE_JWT_EXP: 3600
+      GOTRUE_JWT_AUD: authenticated
+      GOTRUE_JWT_DEFAULT_GROUP_NAME: authenticated
+      GOTRUE_EXTERNAL_GOOGLE_ENABLED: "false"
+      GOTRUE_EXTERNAL_GOOGLE_CLIENT_ID: ""
+      GOTRUE_EXTERNAL_GOOGLE_SECRET: ""
+      GOTRUE_EXTERNAL_GOOGLE_REDIRECT_URI: ""
+      GOTRUE_SITE_URL: http://localhost:3000
+      GOTRUE_URI_ALLOW_LIST: ""
+      GOTRUE_DISABLE_SIGNUP: "false"
+      GOTRUE_API_HOST: 0.0.0.0
+      GOTRUE_DB_DRIVER: postgres
+      GOTRUE_DB_DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-postgres}?sslmode=disable
 
   # Realtime - change port from 4003 to 4004
   realtime:
     ports:
       - "4004:4003"
+    environment:
+      REALTIME_DEFAULT_TENANT: realtime-dev
+      REALTIME_DEFAULT_API_KEY: ${REALTIME_DEFAULT_API_KEY:-super-secret-api-key}
 
   # Storage - change port from 5000 to 5001
   storage:
     ports:
       - "5001:5000"
+    environment:
+      STORAGE_BACKEND: file
+      STORAGE_S3_BUCKET: supabase-storage
 
   # Imgproxy - change port from 5001 to 5002
   imgproxy:
     ports:
       - "5002:5001"
+    environment:
+      IMGPROXY_KEY: ${IMGPROXY_KEY:-imgproxy-key}
+      IMGPROXY_SALT: ${IMGPROXY_SALT:-imgproxy-salt}
+      IMGPROXY_LOCAL_FILESYSTEM_ROOT: /tmp
 
   # Meta - change port from 8080 to 8081
   meta:
@@ -58,6 +103,8 @@ services:
   functions:
     ports:
       - "9001:9000"
+    environment:
+      FUNCTIONS_VERIFY_JWT: "false"
 
   # REST API (PostgREST) - change port from 3001 to 3002
   rest:
