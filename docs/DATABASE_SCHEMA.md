@@ -601,130 +601,297 @@ CREATE INDEX idx_responses_question ON survey_responses(question_id);
 
 ---
 
-### 2.13 benchmarks
+### 2.13 survey_benchmarks
 
-**Propósito**: Encuestas reales para validar/ calibrar agentes sintéticos.
+**Propósito**: Fuentes de benchmark oficiales para validar resultados de encuestas sintéticas.
 
 ```sql
-CREATE TABLE benchmarks (
+CREATE TABLE survey_benchmarks (
     -- Identificación
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    public_id TEXT UNIQUE NOT NULL,         -- 'bch_cep_enero_2024'
     
-    -- Metadatos
-    title TEXT NOT NULL,
+    -- Metadatos de la fuente
+    name TEXT NOT NULL,                     -- 'CEP Octubre 2024'
     description TEXT,
-    source_organization TEXT,               -- 'CEP', 'Criteria', 'Pulso Ciudadano'
+    source TEXT NOT NULL,                   -- 'CEP', 'CADEM', 'Pulso Ciudadano'
+    source_wave TEXT,                       -- 'Oct 2024', 'Wave 3'
     source_url TEXT,
     
-    -- Fechas
-    fieldwork_start DATE,
-    fieldwork_end DATE,
-    published_at DATE,
+    -- Fechas del estudio
+    field_date_start DATE,
+    field_date_end DATE,
+    publication_date DATE,
     
-    -- Muestra
+    -- Características de la muestra
     sample_size INTEGER,
-    sample_error NUMERIC(4,2),              -- Error muestral (ej: 3.0)
+    margin_of_error NUMERIC(4,2),           -- Ej: 2.6 para ±2.6%
+    confidence_level NUMERIC(5,2) DEFAULT 95.0,
+    methodology TEXT,
     
-    -- Cobertura
-    coverage_type TEXT CHECK (coverage_type IN ('national', 'regional', 'communal')),
-    covered_regions TEXT[],                 -- Regiones incluidas
-    
-    -- Datos
-    raw_data_url TEXT,                      -- URL a datos brutos si disponible
-    methodology TEXT,                       -- Descripción metodológica
+    -- Alcance territorial
+    territory_scope TEXT NOT NULL CHECK (territory_scope IN ('national', 'regional', 'communal')),
+    territory_id TEXT REFERENCES territories(id), -- NULL para nacional
     
     -- Estado
-    status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'validated', 'rejected')),
-    
-    created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- Índices
-CREATE INDEX idx_benchmarks_source ON benchmarks(source_organization);
-CREATE INDEX idx_benchmarks_dates ON benchmarks(fieldwork_start, fieldwork_end);
-```
-
-**Relaciones**:
-- Referenciado por: `benchmark_results`
-
----
-
-### 2.14 benchmark_results
-
-**Propósito**: Resultados agregados de benchmarks (para comparar con agentes).
-
-```sql
-CREATE TABLE benchmark_results (
-    -- Identificación
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    benchmark_id UUID NOT NULL REFERENCES benchmarks(id) ON DELETE CASCADE,
-    
-    -- Pregunta/variable
-    variable_name TEXT NOT NULL,            -- 'aprobacion_gobierno'
-    variable_label TEXT,                    -- 'Aprobación del gobierno'
-    question_text TEXT,                     -- Texto exacto de la pregunta
-    
-    -- Resultados
-    result_type TEXT CHECK (result_type IN ('percentage', 'mean', 'median', 'distribution')),
-    result_value NUMERIC(10,4),             -- Valor principal
-    result_distribution JSONB,              -- { "muy_de_acuerdo": 25.5, "de_acuerdo": 30.2 }
-    
-    -- Desagregaciones
-    segment_by TEXT,                        -- 'region', 'sex', 'age_group', 'income'
-    segment_value TEXT,                     -- 'metropolitana', 'male', '18-24'
+    status TEXT DEFAULT 'active' CHECK (status IN ('draft', 'active', 'archived', 'deprecated')),
     
     -- Metadatos
-    margin_of_error NUMERIC(5,2),
-    confidence_level INTEGER DEFAULT 95
+    notes TEXT,
+    created_by UUID REFERENCES auth.users(id),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- Índices
-CREATE INDEX idx_bench_results_benchmark ON benchmark_results(benchmark_id);
-CREATE INDEX idx_bench_results_variable ON benchmark_results(variable_name);
+CREATE INDEX idx_benchmarks_source ON survey_benchmarks(source);
+CREATE INDEX idx_benchmarks_status ON survey_benchmarks(status);
+CREATE INDEX idx_benchmarks_territory ON survey_benchmarks(territory_id);
+CREATE INDEX idx_benchmarks_dates ON survey_benchmarks(field_date_start, field_date_end);
 ```
 
 **Relaciones**:
-- `benchmark_id` → `benchmarks`
+- `territory_id` → `territories` (opcional)
+- Referenciado por: `benchmark_data_points`, `validation_runs`
 
 ---
 
-### 2.15 calibration_runs
+### 2.14 benchmark_data_points
 
-**Propósito**: Ejecuciones de calibración de agentes contra benchmarks.
+**Propósito**: Datos de benchmark a nivel de pregunta individual.
 
 ```sql
-CREATE TABLE calibration_runs (
+CREATE TABLE benchmark_data_points (
     -- Identificación
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    benchmark_id UUID NOT NULL REFERENCES survey_benchmarks(id) ON DELETE CASCADE,
     
-    -- Qué se calibró
-    benchmark_id UUID REFERENCES benchmarks(id),
-    agent_sample_size INTEGER,              -- Cuántos agentes se usaron
+    -- Identificación de la pregunta
+    question_code TEXT NOT NULL,            -- 'CEP_OCT_2024_Q1'
+    question_text TEXT,
+    question_category TEXT,                 -- 'political', 'economic', 'social'
     
-    -- Configuración
-    calibration_strategy TEXT CHECK (calibration_strategy IN ('none', 'weight_adjustment', 'trait_adjustment', 'rejection_sampling')),
+    -- Tipo y opciones
+    answer_type TEXT CHECK (answer_type IN ('single_choice', 'multiple_choice', 'scale', 'text', 'number', 'boolean')),
+    options_json JSONB,                     -- [{"value": "1", "label": "Muy de acuerdo"}]
     
-    -- Métricas de calidad
-    mae NUMERIC(10,4),                      -- Mean Absolute Error
-    rmse NUMERIC(10,4),                     -- Root Mean Square Error
-    max_error NUMERIC(10,4),                -- Error máximo
+    -- Distribución de respuestas
+    distribution_json JSONB NOT NULL,       -- {"1": 25.5, "2": 30.2, ...}
+    sample_size INTEGER,
     
-    -- Resultados
-    adjustments_applied JSONB,              -- Qué ajustes se hicieron
-    agent_weights_adjusted BOOLEAN DEFAULT FALSE,
+    -- Metadatos adicionales
+    metadata_json JSONB,                    -- Datos específicos de la pregunta
+    notes TEXT,
     
-    -- Estado
-    status TEXT DEFAULT 'running' CHECK (status IN ('running', 'completed', 'failed')),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
     
-    -- Tiempos
-    started_at TIMESTAMPTZ DEFAULT NOW(),
-    completed_at TIMESTAMPTZ
+    UNIQUE(benchmark_id, question_code)
 );
 
 -- Índices
-CREATE INDEX idx_calibration_benchmark ON calibration_runs(benchmark_id);
-CREATE INDEX idx_calibration_status ON calibration_runs(status);
+CREATE INDEX idx_data_points_benchmark ON benchmark_data_points(benchmark_id);
+CREATE INDEX idx_data_points_category ON benchmark_data_points(question_category);
+CREATE INDEX idx_data_points_code ON benchmark_data_points(question_code);
+```
+
+**Relaciones**:
+- `benchmark_id` → `survey_benchmarks`
+
+---
+
+### 2.15 validation_runs
+
+**Propósito**: Ejecuciones de validación que comparan encuestas sintéticas contra benchmarks.
+
+```sql
+CREATE TABLE validation_runs (
+    -- Identificación
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    
+    -- Relaciones
+    survey_id UUID NOT NULL REFERENCES surveys(id),
+    survey_run_id UUID REFERENCES survey_runs(id), -- Opcional
+    benchmark_id UUID NOT NULL REFERENCES survey_benchmarks(id),
+    territory_id UUID REFERENCES territories(id),
+    
+    -- Configuración del motor
+    engine_version TEXT NOT NULL,           -- '2.0.0'
+    engine_config_json JSONB,               -- Configuración usada
+    
+    -- Estado
+    status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'running', 'completed', 'failed', 'cancelled')),
+    
+    -- Métricas agregadas
+    average_similarity_score NUMERIC(5,4),  -- 0-1, promedio de similitud
+    average_mae NUMERIC(10,4),              -- Mean Absolute Error promedio
+    average_rmse NUMERIC(10,4),             -- Root Mean Square Error promedio
+    weighted_similarity_score NUMERIC(5,4), -- Similitud ponderada
+    
+    -- Conteos
+    total_questions INTEGER NOT NULL DEFAULT 0,
+    matched_questions INTEGER NOT NULL DEFAULT 0,
+    synthetic_sample_size INTEGER,
+    benchmark_sample_size INTEGER,
+    
+    -- Tiempos
+    started_at TIMESTAMPTZ,
+    completed_at TIMESTAMPTZ,
+    
+    -- Resultados
+    summary_json JSONB,                     -- Resumen de resultados
+    notes TEXT,
+    
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Índices
+CREATE INDEX idx_validation_survey ON validation_runs(survey_id);
+CREATE INDEX idx_validation_benchmark ON validation_runs(benchmark_id);
+CREATE INDEX idx_validation_status ON validation_runs(status);
+CREATE INDEX idx_validation_dates ON validation_runs(started_at, completed_at);
+```
+
+**Relaciones**:
+- `survey_id` → `surveys`
+- `survey_run_id` → `survey_runs` (opcional)
+- `benchmark_id` → `survey_benchmarks`
+- `territory_id` → `territories` (opcional)
+- Referenciado por: `validation_results`
+
+---
+
+### 2.16 validation_results
+
+**Propósito**: Resultados de validación a nivel de pregunta individual.
+
+```sql
+CREATE TABLE validation_results (
+    -- Identificación
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    validation_run_id UUID NOT NULL REFERENCES validation_runs(id) ON DELETE CASCADE,
+    
+    -- Pregunta
+    question_code TEXT NOT NULL,
+    question_text TEXT,
+    question_category TEXT,
+    
+    -- Distribuciones comparadas
+    synthetic_distribution_json JSONB NOT NULL,   -- Nuestros resultados
+    benchmark_distribution_json JSONB NOT NULL,   -- Datos del benchmark
+    
+    -- Métricas de error
+    mae NUMERIC(10,4),                      -- Mean Absolute Error
+    rmse NUMERIC(10,4),                     -- Root Mean Square Error
+    max_absolute_error NUMERIC(10,4),       -- Error máximo
+    
+    -- Métricas de similitud
+    similarity_score NUMERIC(5,4),          -- 0-1, score general
+    cosine_similarity NUMERIC(5,4),         -- Similitud coseno
+    correlation_coefficient NUMERIC(5,4),   -- Correlación de Pearson
+    
+    -- Análisis de opciones
+    option_match_quality NUMERIC(5,4),      -- 0-1, calidad del match
+    best_matching_option TEXT,
+    worst_matching_option TEXT,
+    option_differences_json JSONB,          -- Diferencias por opción
+    
+    -- Estadísticos adicionales
+    chi_square_statistic NUMERIC(10,4),
+    chi_square_p_value NUMERIC(10,4),
+    
+    -- Calidad del match (generado)
+    match_quality TEXT GENERATED ALWAYS AS (
+        CASE 
+            WHEN similarity_score >= 0.90 THEN 'excellent'
+            WHEN similarity_score >= 0.80 THEN 'good'
+            WHEN similarity_score >= 0.70 THEN 'fair'
+            WHEN similarity_score >= 0.60 THEN 'poor'
+            ELSE 'critical'
+        END
+    ) STORED,
+    
+    -- Notas
+    notes TEXT,
+    
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    
+    UNIQUE(validation_run_id, question_code)
+);
+
+-- Índices
+CREATE INDEX idx_results_run ON validation_results(validation_run_id);
+CREATE INDEX idx_results_quality ON validation_results(match_quality);
+CREATE INDEX idx_results_similarity ON validation_results(similarity_score);
+CREATE INDEX idx_results_category ON validation_results(question_category);
+```
+
+**Relaciones**:
+- `validation_run_id` → `validation_runs`
+
+---
+
+### Vistas de Validación
+
+#### active_benchmarks
+Vista de benchmarks activos con conteo de preguntas.
+
+```sql
+CREATE VIEW active_benchmarks AS
+SELECT 
+    sb.*,
+    t.name as territory_name,
+    COUNT(bdp.id) as question_count
+FROM survey_benchmarks sb
+LEFT JOIN territories t ON sb.territory_id = t.id
+LEFT JOIN benchmark_data_points bdp ON sb.id = bdp.benchmark_id
+WHERE sb.status = 'active'
+GROUP BY sb.id, t.name;
+```
+
+#### validation_run_summary
+Vista de resumen de ejecuciones de validación.
+
+```sql
+CREATE VIEW validation_run_summary AS
+SELECT 
+    vr.*,
+    s.name as survey_name,
+    sb.name as benchmark_name,
+    sb.source as benchmark_source,
+    sb.source_wave as benchmark_wave,
+    t.name as territory_name,
+    COUNT(vrsl.id) as results_count,
+    COUNT(*) FILTER (WHERE vrsl.match_quality = 'excellent') as excellent_matches,
+    COUNT(*) FILTER (WHERE vrsl.match_quality = 'good') as good_matches,
+    COUNT(*) FILTER (WHERE vrsl.match_quality = 'fair') as fair_matches,
+    COUNT(*) FILTER (WHERE vrsl.match_quality = 'poor') as poor_matches,
+    COUNT(*) FILTER (WHERE vrsl.match_quality = 'critical') as critical_matches
+FROM validation_runs vr
+JOIN surveys s ON vr.survey_id = s.id
+JOIN survey_benchmarks sb ON vr.benchmark_id = sb.id
+LEFT JOIN territories t ON vr.territory_id = t.id
+LEFT JOIN validation_results vrsl ON vr.id = vrsl.validation_run_id
+GROUP BY vr.id, s.name, sb.name, sb.source, sb.source_wave, t.name;
+```
+
+#### validation_result_details
+Vista de resultados con contexto completo.
+
+```sql
+CREATE VIEW validation_result_details AS
+SELECT 
+    vr.*,
+    v.survey_id,
+    v.benchmark_id,
+    v.engine_version,
+    v.status as run_status,
+    sb.name as benchmark_name,
+    sb.source as benchmark_source
+FROM validation_results vr
+JOIN validation_runs v ON vr.validation_run_id = v.id
+JOIN survey_benchmarks sb ON v.benchmark_id = sb.id;
 ```
 
 ---
@@ -779,14 +946,47 @@ CREATE INDEX idx_calibration_status ON calibration_runs(status);
 │                                          │    (1:N x M)    │              │
 │                                          └─────────────────┘              │
 │                                                                             │
-│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐             │
-│  │    benchmarks   │──┤ benchmark_results│  │ calibration_runs│             │
-│  │  (encuestas     │  │    (1:N)        │  │   (validación)  │             │
-│  │    reales)      │  └─────────────────┘  └─────────────────┘             │
-│  └─────────────────┘                                                        │
+│  ┌─────────────────┐  ┌─────────────────┐                                  │
+│  │survey_benchmarks│──┤benchmark_data_  │                                  │
+│  │  (fuentes       │  │    points (1:N) │                                  │
+│  │   oficiales)    │  └─────────────────┘                                  │
+│  └────────┬────────┘                                                       │
+│           │                                                                │
+│           ▼                                                                │
+│  ┌─────────────────┐  ┌─────────────────┐                                  │
+│  │ validation_runs │──┤validation_results│                                 │
+│  │  (ejecuciones   │  │    (1:N)         │                                 │
+│  │   validación)   │  └─────────────────┘                                  │
+│  └─────────────────┘                                                       │
+│           ▲                                                                │
+│           │ survey_id                                                      │
+│           │ survey_run_id                                                  │
+│           │                                                                │
+│  ┌────────┴────────┐                                                       │
+│  │     surveys     │                                                       │
+│  │   survey_runs   │                                                       │
+│  └─────────────────┘                                                       │
 │                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
+
+### Leyenda de relaciones
+
+| Tabla | Relaciones | Descripción |
+|-------|-----------|-------------|
+| **territories** | Self-reference (parent_id) | Jerarquía territorial |
+| **synthetic_agents** | region_id → territories | Agente en territorio |
+| **agent_profiles/traits/states** | agent_id → synthetic_agents | Datos del agente (1:1) |
+| **agent_memories** | agent_id → synthetic_agents | Memoria histórica (1:N) |
+| **agent_event_exposures** | agent_id + event_id | Exposición a eventos |
+| **surveys** | - | Definición de encuestas |
+| **survey_questions** | survey_id → surveys | Preguntas (1:N) |
+| **survey_runs** | survey_id → surveys | Ejecuciones (1:N) |
+| **survey_responses** | run_id + agent_id + question_id | Respuestas (M:N) |
+| **survey_benchmarks** | territory_id → territories | Benchmarks oficiales |
+| **benchmark_data_points** | benchmark_id → survey_benchmarks | Datos por pregunta (1:N) |
+| **validation_runs** | survey_id + benchmark_id + territory_id | Ejecuciones de validación |
+| **validation_results** | validation_run_id → validation_runs | Resultados por pregunta (1:N) |
 
 ---
 
