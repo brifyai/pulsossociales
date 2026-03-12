@@ -1,0 +1,65 @@
+# Docker Compose Override for EasyPanel Deployment
+# This file overrides ports to avoid conflicts with other services on the server
+# These overrides apply to Supabase services deployed by EasyPanel
+
+services:
+  # Database - change port from 5432 to 5433 to avoid conflict
+  db:
+    ports:
+      - "5433:5432"
+
+  # Supavisor (connection pooler) - change port from 6543 to 6544 to avoid conflict
+  supavisor:
+    ports:
+      - "6544:6543"
+
+  # Kong (API Gateway) - change port from 8000 to 8001
+  kong:
+    ports:
+      - "8001:8000"
+      - "8444:8443"
+
+  # Analytics (Logflare) - change port from 4000 to 4001
+  analytics:
+    ports:
+      - "4001:4000"
+
+  # Studio (Supabase Dashboard) - change port from 3000 to 3001
+  studio:
+    ports:
+      - "3001:3000"
+
+  # Auth (GoTrue) - change port from 9999 to 9998
+  auth:
+    ports:
+      - "9998:9999"
+
+  # Realtime - change port from 4003 to 4004
+  realtime:
+    ports:
+      - "4004:4003"
+
+  # Storage - change port from 5000 to 5001
+  storage:
+    ports:
+      - "5001:5000"
+
+  # Imgproxy - change port from 5001 to 5002
+  imgproxy:
+    ports:
+      - "5002:5001"
+
+  # Meta - change port from 8080 to 8081
+  meta:
+    ports:
+      - "8081:8080"
+
+  # Functions (Edge Functions) - change port from 9000 to 9001
+  functions:
+    ports:
+      - "9001:9000"
+
+  # REST API (PostgREST) - change port from 3001 to 3002
+  rest:
+    ports:
+      - "3002:3001"
