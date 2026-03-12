@@ -104,17 +104,28 @@ export function SurveyResultsPanel({
         </div>
 
         {selectedBenchmarkId && (
-          <div className="mt-3 flex items-center gap-4 text-sm">
-            <span>
-              Similitud general:{' '}
-              <span className={getSimilarityColor(overallSimilarity)}>
-                {(overallSimilarity * 100).toFixed(1)}%
+          <div className="mt-3 space-y-2">
+            <div className="flex items-center gap-4 text-sm">
+              <span className="flex items-center gap-1">
+                Similitud promedio:
+                <span className={getSimilarityColor(overallSimilarity)}>
+                  {(overallSimilarity * 100).toFixed(1)}%
+                </span>
+                <span 
+                  className="text-gray-400 cursor-help" 
+                  title="Promedio simple de similitudes por pregunta. No pondera por importancia. Revise comparaciones individuales."
+                >
+                  ⓘ
+                </span>
               </span>
-            </span>
-            <span className="text-gray-400">|</span>
-            <span>
-              Preguntas con benchmark: {summary.questionsWithBenchmark}/{summary.totalQuestions}
-            </span>
+              <span className="text-gray-400">|</span>
+              <span>
+                Preguntas con benchmark: {summary.questionsWithBenchmark}/{summary.totalQuestions}
+              </span>
+            </div>
+            <p className="text-xs text-gray-500">
+              Nota: La similitud promedio es una métrica simple. Para validación, revise las comparaciones individuales de cada pregunta.
+            </p>
           </div>
         )}
       </div>

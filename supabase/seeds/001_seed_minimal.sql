@@ -2,11 +2,11 @@
 -- SEEDS MÍNIMOS: Datos iniciales para desarrollo
 -- ============================================================================
 -- Objetivo: Poblar tablas con datos de prueba basados en mocks existentes
--- Incluye: Territorio raíz (Chile), 3 regiones, 10 agentes con perfiles, rasgos, memorias y estados
+-- Incluye: Territorio raíz (Chile), 4 regiones, 12 agentes con perfiles, rasgos, memorias y estados
 -- ============================================================================
 
 -- ============================================================================
--- 1. TERRITORIES - Territorio raíz (Chile) + 3 regiones representativas
+-- 1. TERRITORIES - Territorio raíz (Chile) + 4 regiones representativas
 -- ============================================================================
 
 INSERT INTO territories (
@@ -78,10 +78,27 @@ INSERT INTO territories (
     80, 75, 70, 65,
     'CL-BI',
     '08'
-);
+),
+-- Región de La Araucanía (cuarta más poblada, zona sur)
+(
+    'araucania',
+    'Región de La Araucanía',
+    'Araucanía',
+    'chile',
+    'region',
+    'sur',
+    'Temuco',
+    1012000,
+    31842,
+    35, 125, 5,
+    70, 80, 65, 60,
+    'CL-AR',
+    '09'
+)
+ON CONFLICT (id) DO NOTHING;
 
 -- ============================================================================
--- 2. SYNTHETIC_AGENTS - 10 agentes de prueba
+-- 2. SYNTHETIC_AGENTS - 12 agentes de prueba
 -- ============================================================================
 
 INSERT INTO synthetic_agents (
@@ -211,7 +228,33 @@ INSERT INTO synthetic_agents (
     'f2',
     1,
     'seed_jose_010'
-);
+),
+-- Araucanía (2 agentes)
+(
+    'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a21',
+    'ag_011',
+    'dormant',
+    'araucania',
+    'Temuco',
+    'urban',
+    1.0,
+    'f3',
+    1,
+    'seed_luis_011'
+),
+(
+    'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a22',
+    'ag_012',
+    'dormant',
+    'araucania',
+    'Villarrica',
+    'semi_urban',
+    1.2,
+    'f4',
+    1,
+    'seed_marta_012'
+)
+ON CONFLICT (id) DO NOTHING;
 
 -- ============================================================================
 -- 3. AGENT_PROFILES - Perfiles demográficos
@@ -381,7 +424,40 @@ INSERT INTO agent_profiles (
     'mobile',
     30,
     'Ex obrero portuario jubilado, vive solo, poco contacto con tecnología, nostálgico'
-);
+),
+-- Agente 011: Luis Contreras (Araucanía)
+(
+    'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a21',
+    'Luis Contreras',
+    'male',
+    35,
+    'university',
+    'employed',
+    5,
+    4,
+    'couple',
+    true,
+    'fiber',
+    70,
+    'Profesor de historia en Temuco, interesado en temas territoriales y derechos indígenas'
+),
+-- Agente 012: Marta Riquelme (Araucanía)
+(
+    'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a22',
+    'Marta Riquelme',
+    'female',
+    48,
+    'secondary',
+    'employed',
+    4,
+    3,
+    'single_parent',
+    true,
+    'mobile',
+    45,
+    'Dueña de pequeño negocio en Villarrica, preocupada por el turismo y la seguridad regional'
+)
+ON CONFLICT (agent_id) DO NOTHING;
 
 -- ============================================================================
 -- 4. AGENT_TRAITS - Rasgos psicológicos
@@ -441,7 +517,18 @@ INSERT INTO agent_traits (
 (
     'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a20',
     50, 85, 20, 60, 40, 65, 30, 65, 70, 75
-);
+),
+-- Agente 011: Luis (centro-izquierda, interesado en justicia social)
+(
+    'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a21',
+    40, 55, 75, 70, 85, 60, 70, 35, 45, 80
+),
+-- Agente 012: Marta (centro, pragmática, preocupada por economía local)
+(
+    'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a22',
+    55, 70, 50, 65, 60, 70, 50, 55, 60, 75
+)
+ON CONFLICT (agent_id) DO NOTHING;
 
 -- ============================================================================
 -- 5. AGENT_MEMORIES - Memorias estructuradas
@@ -614,7 +701,30 @@ INSERT INTO agent_memories (
     'manual',
     80,
     75
-);
+),
+-- Agente 011: Luis - Resumen general
+(
+    'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a21',
+    'summary',
+    NULL,
+    'Luis es un profesor de historia comprometido con la educación pública y los derechos de los pueblos originarios. Vive en Temuco y está muy informado sobre el conflicto territorial.',
+    NULL,
+    'manual',
+    85,
+    80
+),
+-- Agente 012: Marta - Resumen general
+(
+    'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a22',
+    'summary',
+    NULL,
+    'Marta es una emprendedora de Villarrica que depende del turismo. Está preocupada por la inseguridad y cómo afecta su negocio, pero también valora la naturaleza de la región.',
+    NULL,
+    'manual',
+    80,
+    75
+)
+ON CONFLICT DO NOTHING;
 
 -- ============================================================================
 -- 6. AGENT_STATES - Estados dinámicos
@@ -694,7 +804,22 @@ INSERT INTO agent_states (
     70, 75, 0, 'negative',
     0, 0, NULL,
     '2024-03-08T10:00:00Z', '2024-03-08T16:00:00Z'
-);
+),
+-- Agente 011: Luis (fatiga moderada, ánimo neutral)
+(
+    'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a21',
+    40, 50, 2, 'neutral',
+    3, 0, '2024-03-14T11:00:00Z',
+    '2024-03-14T08:00:00Z', NULL
+),
+-- Agente 012: Marta (fatiga moderada, ánimo preocupado)
+(
+    'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a22',
+    45, 65, 1, 'stressed',
+    2, 0, '2024-03-13T14:00:00Z',
+    '2024-03-13T09:00:00Z', NULL
+)
+ON CONFLICT (agent_id) DO NOTHING;
 
 -- ============================================================================
 -- 7. RUNTIME_BINDINGS - Bindings vacíos (ningún agente activo inicialmente)

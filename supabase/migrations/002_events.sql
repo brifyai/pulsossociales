@@ -60,7 +60,7 @@ CREATE TABLE IF NOT EXISTS agent_event_exposures (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     
     -- Relationships
-    agent_id TEXT NOT NULL REFERENCES agents(id) ON DELETE CASCADE,
+    agent_id UUID NOT NULL REFERENCES synthetic_agents(id) ON DELETE CASCADE,
     event_id UUID NOT NULL REFERENCES events(id) ON DELETE CASCADE,
     
     -- Exposure characteristics
@@ -152,7 +152,7 @@ GROUP BY e.id, t.name, t.short_name;
 -- ============================================================================
 
 -- Function: Get events for a specific agent
-CREATE OR REPLACE FUNCTION get_agent_events(agent_uuid TEXT)
+CREATE OR REPLACE FUNCTION get_agent_events(agent_uuid UUID)
 RETURNS TABLE (
     event_id UUID,
     title TEXT,
@@ -245,11 +245,13 @@ ALTER TABLE events ENABLE ROW LEVEL SECURITY;
 ALTER TABLE agent_event_exposures ENABLE ROW LEVEL SECURITY;
 
 -- Policy: Allow read access to events for authenticated users
+DROP POLICY IF EXISTS "Allow read access to events" ON events;
 CREATE POLICY "Allow read access to events" ON events
     FOR SELECT TO authenticated, anon
     USING (true);
 
 -- Policy: Allow read access to exposures for authenticated users
+DROP POLICY IF EXISTS "Allow read access to exposures" ON agent_event_exposures;
 CREATE POLICY "Allow read access to exposures" ON agent_event_exposures
     FOR SELECT TO authenticated, anon
     USING (true);

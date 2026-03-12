@@ -1,0 +1,18 @@
+QuestionCode,QuestionText,OptionValue,OptionLabel,BenchmarkPct,SyntheticPct,AbsoluteError
+PRES_APPROVAL,"¿Cómo evalúa la gestión del Presidente Gabriel Boric?",approve,"Aprueba",28.50,26.44,2.06
+PRES_APPROVAL,"¿Cómo evalúa la gestión del Presidente Gabriel Boric?",disapprove,"Desaprueba",58.20,62.05,3.85
+PRES_APPROVAL,"¿Cómo evalúa la gestión del Presidente Gabriel Boric?",no_opinion,"No sabe / No responde",13.30,11.51,1.79
+COUNTRY_DIRECTION,"¿Cree usted que el país va por el camino correcto o por el camino equivocado?",correct,"Camino correcto",22.80,20.34,2.46
+COUNTRY_DIRECTION,"¿Cree usted que el país va por el camino correcto o por el camino equivocado?",wrong,"Camino equivocado",68.40,69.79,1.39
+COUNTRY_DIRECTION,"¿Cree usted que el país va por el camino correcto o por el camino equivocado?",no_opinion,"No sabe / No responde",8.80,9.86,1.06
+ECON_SITUATION,"¿Cómo calificaría la situación económica actual del país?",very_good,"Muy buena",0.80,0.68,0.12
+ECON_SITUATION,"¿Cómo calificaría la situación económica actual del país?",good,"Buena",8.20,8.01,0.19
+ECON_SITUATION,"¿Cómo calificaría la situación económica actual del país?",regular,"Regular",32.50,29.66,2.84
+ECON_SITUATION,"¿Cómo calificaría la situación económica actual del país?",bad,"Mala",42.70,44.86,2.16
+ECON_SITUATION,"¿Cómo calificaría la situación económica actual del país?",very_bad,"Muy mala",13.80,14.93,1.13
+ECON_SITUATION,"¿Cómo calificaría la situación económica actual del país?",no_opinion,"No sabe / No responde",2.00,1.85,0.15
+TRUST_CARAB,"¿Cuánta confianza tiene en Carabineros de Chile?",a_lot,"Mucha confianza",18.20,18.56,0.36
+TRUST_CARAB,"¿Cuánta confianza tiene en Carabineros de Chile?",some,"Algo de confianza",42.50,42.74,0.24
+TRUST_CARAB,"¿Cuánta confianza tiene en Carabineros de Chile?",little,"Poca confianza",24.80,23.49,1.31
+TRUST_CARAB,"¿Cuánta confianza tiene en Carabineros de Chile?",none,"Ninguna confianza",12.30,13.01,0.71
+TRUST_CARAB,"¿Cuánta confianza tiene en Carabineros de Chile?",no_opinion,"No sabe / No responde",2.20,2.19,0.01

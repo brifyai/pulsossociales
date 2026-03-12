@@ -23,6 +23,80 @@ const benchmarks: Map<string, SurveyBenchmark> = new Map();
 const benchmarkData: Map<string, BenchmarkDataPoint[]> = new Map();
 
 // ============================================================================
+// LOCALSTORAGE PERSISTENCE
+// ============================================================================
+
+const STORAGE_KEY_BENCHMARKS = 'pulsossociales_benchmarks';
+const STORAGE_KEY_DATA = 'pulsossociales_benchmark_data';
+
+/**
+ * Load benchmarks from localStorage
+ */
+function loadBenchmarksFromStorage(): void {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY_BENCHMARKS);
+    if (stored) {
+      const storedBenchmarks: SurveyBenchmark[] = JSON.parse(stored);
+      for (const b of storedBenchmarks) {
+        benchmarks.set(b.id, b);
+      }
+    }
+  } catch (e) {
+    console.warn('Failed to load benchmarks from storage:', e);
+  }
+}
+
+/**
+ * Save benchmarks to localStorage
+ */
+function saveBenchmarksToStorage(): void {
+  try {
+    const storedBenchmarks = Array.from(benchmarks.values());
+    localStorage.setItem(STORAGE_KEY_BENCHMARKS, JSON.stringify(storedBenchmarks));
+  } catch (e) {
+    console.warn('Failed to save benchmarks to storage:', e);
+  }
+}
+
+/**
+ * Load benchmark data from localStorage
+ */
+function loadBenchmarkDataFromStorage(): void {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY_DATA);
+    if (stored) {
+      const storedData: Record<string, BenchmarkDataPoint[]> = JSON.parse(stored);
+      for (const [key, value] of Object.entries(storedData)) {
+        benchmarkData.set(key, value);
+      }
+    }
+  } catch (e) {
+    console.warn('Failed to load benchmark data from storage:', e);
+  }
+}
+
+/**
+ * Save benchmark data to localStorage
+ */
+function saveBenchmarkDataToStorage(): void {
+  try {
+    const storedData: Record<string, BenchmarkDataPoint[]> = {};
+    for (const [key, value] of benchmarkData.entries()) {
+      storedData[key] = value;
+    }
+    localStorage.setItem(STORAGE_KEY_DATA, JSON.stringify(storedData));
+  } catch (e) {
+    console.warn('Failed to save benchmark data to storage:', e);
+  }
+}
+
+// Initialize from storage on module load (only in browser)
+if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+  loadBenchmarksFromStorage();
+  loadBenchmarkDataFromStorage();
+}
+
+// ============================================================================
 // BENCHMARK MANAGEMENT
 // ============================================================================
 
@@ -57,6 +131,10 @@ export function createBenchmark(
   benchmarks.set(benchmark.id, benchmark);
   benchmarkData.set(benchmark.id, []);
 
+  // Persist to localStorage
+  saveBenchmarksToStorage();
+  saveBenchmarkDataToStorage();
+
   return benchmark;
 }
 
@@ -88,6 +166,9 @@ export function addBenchmarkDataPoint(
   const existing = benchmarkData.get(benchmarkId) ?? [];
   existing.push(dataPoint);
   benchmarkData.set(benchmarkId, existing);
+
+  // Persist to localStorage
+  saveBenchmarkDataToStorage();
 
   return dataPoint;
 }
@@ -130,6 +211,11 @@ export function getAllBenchmarkData(benchmarkId: string): BenchmarkDataPoint[] {
 export function deleteBenchmark(benchmarkId: string): boolean {
   benchmarks.delete(benchmarkId);
   benchmarkData.delete(benchmarkId);
+
+  // Persist to localStorage
+  saveBenchmarksToStorage();
+  saveBenchmarkDataToStorage();
+
   return true;
 }
 

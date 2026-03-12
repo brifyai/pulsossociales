@@ -147,8 +147,20 @@ export function useSurveyResults({
     });
   }, [aggregatedResults, selectedBenchmarkId]);
 
-  // Calculate overall similarity
-  const overallSimilarity = useMemo(() => {
+  /**
+   * Calculate average similarity score across all questions.
+   * 
+   * IMPORTANT: This is a simple arithmetic mean of similarity scores.
+   * It treats all questions equally, regardless of their importance or variance.
+   * 
+   * For validation purposes:
+   * - A high score (>0.8) suggests good overall fit
+   * - A low score (<0.6) suggests systematic differences
+   * - Individual question comparisons should always be reviewed
+   * 
+   * This is NOT a weighted statistical measure. Use with caution.
+   */
+  const averageSimilarityScore = useMemo(() => {
     if (comparisons.length === 0) return 0;
     const totalSimilarity = comparisons.reduce(
       (sum, c) => sum + c.metrics.similarityScore,
@@ -156,6 +168,9 @@ export function useSurveyResults({
     );
     return totalSimilarity / comparisons.length;
   }, [comparisons]);
+
+  // Keep old name for backward compatibility (deprecated)
+  const overallSimilarity = averageSimilarityScore;
 
   // Get result for specific question
   const getResultForQuestion = useCallback(
@@ -267,8 +282,106 @@ export function calculateSurveySummary(
 
 /**
  * Export results to CSV format
+ * 
+ * Creates a detailed CSV with:
+ * - Summary row per question
+ * - Distribution rows showing each option
+ * - Benchmark comparison per option
  */
 export function exportResultsToCSV(
+  comparisons: BenchmarkComparison[],
+  includeBenchmark: boolean = true
+): string {
+  const lines: string[] = [];
+
+  // Header
+  const headers = [
+    'Question Code',
+    'Question Text',
+    'Answer Type',
+    'Total Responses',
+    'Total Weight',
+    'Option Value',
+    'Option Label',
+    'Synthetic Count',
+    'Synthetic %',
+    'Synthetic Weighted %',
+  ];
+
+  if (includeBenchmark) {
+    headers.push(
+      'Benchmark %',
+      'Absolute Error',
+      'Relative Error %',
+      'Question Similarity',
+      'Question MAE',
+      'Question RMSE'
+    );
+  }
+
+  lines.push(headers.join(','));
+
+  // Data rows - one per option
+  for (const c of comparisons) {
+    // Get all unique option values from both synthetic and benchmark
+    const allValues = new Set<string>();
+    c.synthetic.distribution.forEach(d => allValues.add(String(d.value)));
+    if (includeBenchmark && c.benchmark) {
+      c.benchmark.expectedDistribution.forEach(d => allValues.add(String(d.value)));
+    }
+
+    // Sort values for consistent output
+    const sortedValues = Array.from(allValues).sort();
+
+    for (const value of sortedValues) {
+      const syntheticDist = c.synthetic.distribution.find(d => String(d.value) === value);
+      const benchmarkDist = includeBenchmark && c.benchmark
+        ? c.benchmark.expectedDistribution.find(d => String(d.value) === value)
+        : null;
+
+      const row = [
+        c.questionCode,
+        `"${c.questionText.replace(/"/g, '""')}"`,
+        c.answerType,
+        c.synthetic.totalResponses.toString(),
+        c.synthetic.totalWeight.toFixed(2),
+        value,
+        syntheticDist?.label ?? benchmarkDist?.label ?? value,
+        syntheticDist?.count?.toString() ?? '0',
+        (syntheticDist?.percentage ?? 0).toFixed(2),
+        (syntheticDist?.weightedPercentage ?? 0).toFixed(2),
+      ];
+
+      if (includeBenchmark) {
+        const syntheticPct = syntheticDist?.percentage ?? 0;
+        const benchmarkPct = benchmarkDist?.percentage ?? 0;
+        const absError = Math.abs(syntheticPct - benchmarkPct);
+        const relError = benchmarkPct > 0 ? (absError / benchmarkPct) * 100 : 0;
+
+        row.push(
+          benchmarkPct.toFixed(2),
+          absError.toFixed(2),
+          relError.toFixed(2),
+          (c.metrics.similarityScore * 100).toFixed(1),
+          c.metrics.mae.toFixed(2),
+          c.metrics.rmse.toFixed(2)
+        );
+      }
+
+      lines.push(row.join(','));
+    }
+
+    // Add blank row between questions for readability
+    lines.push('');
+  }
+
+  return lines.join('\n');
+}
+
+/**
+ * Export summary results to CSV (one row per question)
+ */
+export function exportSummaryToCSV(
   comparisons: BenchmarkComparison[],
   includeBenchmark: boolean = true
 ): string {
@@ -278,6 +391,9 @@ export function exportResultsToCSV(
     'Answer Type',
     'Total Responses',
     'Total Weight',
+    'Weighted Mean',
+    'Weighted Median',
+    'Std Dev',
   ];
 
   if (includeBenchmark) {
@@ -297,6 +413,9 @@ export function exportResultsToCSV(
       c.answerType,
       c.synthetic.totalResponses.toString(),
       c.synthetic.totalWeight.toFixed(2),
+      c.synthetic.statistics?.weightedMean?.toFixed(2) ?? 'N/A',
+      c.synthetic.statistics?.weightedMedian?.toFixed(2) ?? 'N/A',
+      c.synthetic.statistics?.stdDev?.toFixed(2) ?? 'N/A',
     ];
 
     if (includeBenchmark) {

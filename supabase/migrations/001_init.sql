@@ -17,7 +17,7 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto;
 -- 1. TERRITORIES - Jerarquía territorial de Chile
 -- ============================================================================
 
-CREATE TABLE territories (
+CREATE TABLE IF NOT EXISTS territories (
     -- Identificación
     id TEXT PRIMARY KEY,                    -- 'metropolitana', 'valparaiso'
     name TEXT NOT NULL,                     -- 'Región Metropolitana de Santiago'
@@ -56,9 +56,9 @@ CREATE TABLE territories (
 );
 
 -- Índices para territories
-CREATE INDEX idx_territories_level ON territories(level);
-CREATE INDEX idx_territories_parent ON territories(parent_id);
-CREATE INDEX idx_territories_macro_zone ON territories(macro_zone);
+CREATE INDEX IF NOT EXISTS idx_territories_level ON territories(level);
+CREATE INDEX IF NOT EXISTS idx_territories_parent ON territories(parent_id);
+CREATE INDEX IF NOT EXISTS idx_territories_macro_zone ON territories(macro_zone);
 
 -- Trigger para updated_at
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -69,6 +69,7 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
+DROP TRIGGER IF EXISTS update_territories_updated_at ON territories;
 CREATE TRIGGER update_territories_updated_at
     BEFORE UPDATE ON territories
     FOR EACH ROW
@@ -78,7 +79,7 @@ CREATE TRIGGER update_territories_updated_at
 -- 2. SYNTHETIC_AGENTS - Registro maestro de agentes sintéticos
 -- ============================================================================
 
-CREATE TABLE synthetic_agents (
+CREATE TABLE IF NOT EXISTS synthetic_agents (
     -- Identificación
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     public_id TEXT UNIQUE NOT NULL,         -- ID expuesto en APIs (prefijo 'ag_')
@@ -111,12 +112,13 @@ CREATE TABLE synthetic_agents (
 );
 
 -- Índices para synthetic_agents
-CREATE INDEX idx_agents_region ON synthetic_agents(region_id);
-CREATE INDEX idx_agents_status ON synthetic_agents(status);
-CREATE INDEX idx_agents_commune ON synthetic_agents(commune);
-CREATE INDEX idx_agents_urban_rural ON synthetic_agents(urban_rural);
+CREATE INDEX IF NOT EXISTS idx_agents_region ON synthetic_agents(region_id);
+CREATE INDEX IF NOT EXISTS idx_agents_status ON synthetic_agents(status);
+CREATE INDEX IF NOT EXISTS idx_agents_commune ON synthetic_agents(commune);
+CREATE INDEX IF NOT EXISTS idx_agents_urban_rural ON synthetic_agents(urban_rural);
 
 -- Trigger para updated_at
+DROP TRIGGER IF EXISTS update_synthetic_agents_updated_at ON synthetic_agents;
 CREATE TRIGGER update_synthetic_agents_updated_at
     BEFORE UPDATE ON synthetic_agents
     FOR EACH ROW
@@ -126,7 +128,7 @@ CREATE TRIGGER update_synthetic_agents_updated_at
 -- 3. AGENT_PROFILES - Características demográficas y socioeconómicas
 -- ============================================================================
 
-CREATE TABLE agent_profiles (
+CREATE TABLE IF NOT EXISTS agent_profiles (
     -- Identificación
     agent_id UUID PRIMARY KEY REFERENCES synthetic_agents(id) ON DELETE CASCADE,
 
@@ -163,13 +165,14 @@ CREATE TABLE agent_profiles (
 );
 
 -- Índices para estratificación
-CREATE INDEX idx_profiles_age ON agent_profiles(age);
-CREATE INDEX idx_profiles_sex ON agent_profiles(sex);
-CREATE INDEX idx_profiles_education ON agent_profiles(education_level);
-CREATE INDEX idx_profiles_income ON agent_profiles(income_decile);
-CREATE INDEX idx_profiles_employment ON agent_profiles(employment_status);
+CREATE INDEX IF NOT EXISTS idx_profiles_age ON agent_profiles(age);
+CREATE INDEX IF NOT EXISTS idx_profiles_sex ON agent_profiles(sex);
+CREATE INDEX IF NOT EXISTS idx_profiles_education ON agent_profiles(education_level);
+CREATE INDEX IF NOT EXISTS idx_profiles_income ON agent_profiles(income_decile);
+CREATE INDEX IF NOT EXISTS idx_profiles_employment ON agent_profiles(employment_status);
 
 -- Trigger para updated_at
+DROP TRIGGER IF EXISTS update_agent_profiles_updated_at ON agent_profiles;
 CREATE TRIGGER update_agent_profiles_updated_at
     BEFORE UPDATE ON agent_profiles
     FOR EACH ROW
@@ -179,7 +182,7 @@ CREATE TRIGGER update_agent_profiles_updated_at
 -- 4. AGENT_TRAITS - Rasgos psicológicos y comportamentales
 -- ============================================================================
 
-CREATE TABLE agent_traits (
+CREATE TABLE IF NOT EXISTS agent_traits (
     -- Identificación
     agent_id UUID PRIMARY KEY REFERENCES synthetic_agents(id) ON DELETE CASCADE,
 
@@ -202,11 +205,12 @@ CREATE TABLE agent_traits (
 );
 
 -- Índices para análisis
-CREATE INDEX idx_traits_ideology ON agent_traits(ideology_score);
-CREATE INDEX idx_traits_institutional_trust ON agent_traits(institutional_trust);
-CREATE INDEX idx_traits_civic ON agent_traits(civic_interest);
+CREATE INDEX IF NOT EXISTS idx_traits_ideology ON agent_traits(ideology_score);
+CREATE INDEX IF NOT EXISTS idx_traits_institutional_trust ON agent_traits(institutional_trust);
+CREATE INDEX IF NOT EXISTS idx_traits_civic ON agent_traits(civic_interest);
 
 -- Trigger para updated_at
+DROP TRIGGER IF EXISTS update_agent_traits_updated_at ON agent_traits;
 CREATE TRIGGER update_agent_traits_updated_at
     BEFORE UPDATE ON agent_traits
     FOR EACH ROW
@@ -216,7 +220,7 @@ CREATE TRIGGER update_agent_traits_updated_at
 -- 5. AGENT_MEMORIES - Memoria estructurada del agente
 -- ============================================================================
 
-CREATE TABLE agent_memories (
+CREATE TABLE IF NOT EXISTS agent_memories (
     -- Identificación
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     agent_id UUID NOT NULL REFERENCES synthetic_agents(id) ON DELETE CASCADE,
@@ -247,12 +251,13 @@ CREATE TABLE agent_memories (
 );
 
 -- Índices
-CREATE INDEX idx_memories_agent ON agent_memories(agent_id);
-CREATE INDEX idx_memories_type ON agent_memories(memory_type);
-CREATE INDEX idx_memories_topic ON agent_memories(topic);
-CREATE INDEX idx_memories_source ON agent_memories(source);
+CREATE INDEX IF NOT EXISTS idx_memories_agent ON agent_memories(agent_id);
+CREATE INDEX IF NOT EXISTS idx_memories_type ON agent_memories(memory_type);
+CREATE INDEX IF NOT EXISTS idx_memories_topic ON agent_memories(topic);
+CREATE INDEX IF NOT EXISTS idx_memories_source ON agent_memories(source);
 
 -- Trigger para updated_at
+DROP TRIGGER IF EXISTS update_agent_memories_updated_at ON agent_memories;
 CREATE TRIGGER update_agent_memories_updated_at
     BEFORE UPDATE ON agent_memories
     FOR EACH ROW
@@ -262,7 +267,7 @@ CREATE TRIGGER update_agent_memories_updated_at
 -- 6. AGENT_STATES - Estado dinámico del agente
 -- ============================================================================
 
-CREATE TABLE agent_states (
+CREATE TABLE IF NOT EXISTS agent_states (
     -- Identificación
     agent_id UUID PRIMARY KEY REFERENCES synthetic_agents(id) ON DELETE CASCADE,
 
@@ -291,11 +296,12 @@ CREATE TABLE agent_states (
 );
 
 -- Índices
-CREATE INDEX idx_states_mood ON agent_states(mood);
-CREATE INDEX idx_states_fatigue ON agent_states(fatigue);
-CREATE INDEX idx_states_last_survey ON agent_states(last_survey_at);
+CREATE INDEX IF NOT EXISTS idx_states_mood ON agent_states(mood);
+CREATE INDEX IF NOT EXISTS idx_states_fatigue ON agent_states(fatigue);
+CREATE INDEX IF NOT EXISTS idx_states_last_survey ON agent_states(last_survey_at);
 
 -- Trigger para updated_at
+DROP TRIGGER IF EXISTS update_agent_states_updated_at ON agent_states;
 CREATE TRIGGER update_agent_states_updated_at
     BEFORE UPDATE ON agent_states
     FOR EACH ROW
@@ -305,7 +311,7 @@ CREATE TRIGGER update_agent_states_updated_at
 -- 7. RUNTIME_BINDINGS - Puente entre Supabase y Convex
 -- ============================================================================
 
-CREATE TABLE runtime_bindings (
+CREATE TABLE IF NOT EXISTS runtime_bindings (
     -- Identificación
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
@@ -339,25 +345,26 @@ CREATE TABLE runtime_bindings (
 );
 
 -- Índices críticos
-CREATE UNIQUE INDEX idx_bindings_agent_active
+CREATE UNIQUE INDEX IF NOT EXISTS idx_bindings_agent_active
     ON runtime_bindings(agent_id)
     WHERE status IN ('activating', 'active');
 
-CREATE INDEX idx_bindings_convex_agent ON runtime_bindings(convex_agent_id);
-CREATE INDEX idx_bindings_convex_player ON runtime_bindings(convex_player_id);
-CREATE INDEX idx_bindings_status ON runtime_bindings(status);
-CREATE INDEX idx_bindings_region ON runtime_bindings(region_id);
+CREATE INDEX IF NOT EXISTS idx_bindings_convex_agent ON runtime_bindings(convex_agent_id);
+CREATE INDEX IF NOT EXISTS idx_bindings_convex_player ON runtime_bindings(convex_player_id);
+CREATE INDEX IF NOT EXISTS idx_bindings_status ON runtime_bindings(status);
+CREATE INDEX IF NOT EXISTS idx_bindings_region ON runtime_bindings(region_id);
 
 -- Índices únicos opcionales para convex IDs cuando no sean null
-CREATE UNIQUE INDEX idx_bindings_convex_agent_unique
+CREATE UNIQUE INDEX IF NOT EXISTS idx_bindings_convex_agent_unique
     ON runtime_bindings(convex_agent_id)
     WHERE convex_agent_id IS NOT NULL;
 
-CREATE UNIQUE INDEX idx_bindings_convex_player_unique
+CREATE UNIQUE INDEX IF NOT EXISTS idx_bindings_convex_player_unique
     ON runtime_bindings(convex_player_id)
     WHERE convex_player_id IS NOT NULL;
 
 -- Trigger para updated_at
+DROP TRIGGER IF EXISTS update_runtime_bindings_updated_at ON runtime_bindings;
 CREATE TRIGGER update_runtime_bindings_updated_at
     BEFORE UPDATE ON runtime_bindings
     FOR EACH ROW
@@ -368,7 +375,7 @@ CREATE TRIGGER update_runtime_bindings_updated_at
 -- ============================================================================
 
 -- Vista: Resumen de agente para listas
-CREATE VIEW agent_summaries AS
+CREATE OR REPLACE VIEW agent_summaries AS
 SELECT
     sa.id,
     sa.public_id,
@@ -393,7 +400,7 @@ LEFT JOIN runtime_bindings rb ON sa.id = rb.agent_id
     AND rb.status IN ('activating', 'active');
 
 -- Vista: Agente completo para detalle
-CREATE VIEW full_agents AS
+CREATE OR REPLACE VIEW full_agents AS
 SELECT
     sa.id as agent_id,
     sa.public_id,
@@ -462,24 +469,31 @@ ALTER TABLE agent_states ENABLE ROW LEVEL SECURITY;
 ALTER TABLE runtime_bindings ENABLE ROW LEVEL SECURITY;
 
 -- Política: Usuarios autenticados pueden leer todo
+DROP POLICY IF EXISTS "Authenticated users can view territories" ON territories;
 CREATE POLICY "Authenticated users can view territories"
     ON territories FOR SELECT TO authenticated USING (true);
 
+DROP POLICY IF EXISTS "Authenticated users can view agents" ON synthetic_agents;
 CREATE POLICY "Authenticated users can view agents"
     ON synthetic_agents FOR SELECT TO authenticated USING (true);
 
+DROP POLICY IF EXISTS "Authenticated users can view profiles" ON agent_profiles;
 CREATE POLICY "Authenticated users can view profiles"
     ON agent_profiles FOR SELECT TO authenticated USING (true);
 
+DROP POLICY IF EXISTS "Authenticated users can view traits" ON agent_traits;
 CREATE POLICY "Authenticated users can view traits"
     ON agent_traits FOR SELECT TO authenticated USING (true);
 
+DROP POLICY IF EXISTS "Authenticated users can view memories" ON agent_memories;
 CREATE POLICY "Authenticated users can view memories"
     ON agent_memories FOR SELECT TO authenticated USING (true);
 
+DROP POLICY IF EXISTS "Authenticated users can view states" ON agent_states;
 CREATE POLICY "Authenticated users can view states"
     ON agent_states FOR SELECT TO authenticated USING (true);
 
+DROP POLICY IF EXISTS "Authenticated users can view bindings" ON runtime_bindings;
 CREATE POLICY "Authenticated users can view bindings"
     ON runtime_bindings FOR SELECT TO authenticated USING (true);
 

@@ -401,21 +401,28 @@ function buildSegmentDistribution(
 }
 
 /**
- * Calculate average for segment
+ * Calculate weighted average for segment
  */
 function calculateSegmentAverage(
   responses: SurveyResponse[],
   agentMap: Map<string, AgentInfo>
 ): number | undefined {
-  const values: number[] = [];
+  let weightedSum = 0;
+  let totalWeight = 0;
 
   for (const response of responses) {
     const value = extractNumericValue(response);
-    if (value !== null) values.push(value);
+    if (value === null) continue;
+
+    const agent = agentMap.get(response.agent_id);
+    const weight = agent?.profile.weight ?? 1;
+
+    weightedSum += value * weight;
+    totalWeight += weight;
   }
 
-  if (values.length === 0) return undefined;
-  return values.reduce((a, b) => a + b, 0) / values.length;
+  if (totalWeight === 0) return undefined;
+  return weightedSum / totalWeight;
 }
 
 // ============================================================================
@@ -585,6 +592,116 @@ function calculateChiSquare(optionComparisons: OptionComparison[]): number | nul
   }
 
   return hasExpected ? chiSq : null;
+}
+
+// ============================================================================
+// BENCHMARK VALIDATION
+// ============================================================================
+
+export interface BenchmarkValidationResult {
+  isValid: boolean;
+  matchPercentage: number;
+  matchedOptions: string[];
+  unmatchedBenchmarkOptions: string[];
+  unmatchedSyntheticOptions: string[];
+  warnings: string[];
+}
+
+/**
+ * Validate benchmark consistency against question options
+ */
+export function validateBenchmarkConsistency(
+  question: SurveyQuestion,
+  benchmark: BenchmarkDataPoint
+): BenchmarkValidationResult {
+  const warnings: string[] = [];
+  
+  // Get option values from question
+  const questionOptionValues = new Set(
+    question.options_json?.map(o => String(o.value)) ?? []
+  );
+  
+  // Get option values from benchmark
+  const benchmarkOptionValues = new Set(
+    benchmark.expectedDistribution.map(d => String(d.value))
+  );
+  
+  // Find matches and mismatches
+  const matchedOptions: string[] = [];
+  const unmatchedBenchmarkOptions: string[] = [];
+  const unmatchedSyntheticOptions: string[] = [];
+  
+  for (const value of benchmarkOptionValues) {
+    if (questionOptionValues.has(value)) {
+      matchedOptions.push(value);
+    } else {
+      unmatchedBenchmarkOptions.push(value);
+    }
+  }
+  
+  for (const value of questionOptionValues) {
+    if (!benchmarkOptionValues.has(value)) {
+      unmatchedSyntheticOptions.push(value);
+    }
+  }
+  
+  // Calculate match percentage
+  const totalUniqueOptions = new Set([...questionOptionValues, ...benchmarkOptionValues]).size;
+  const matchPercentage = totalUniqueOptions > 0 
+    ? (matchedOptions.length / totalUniqueOptions) * 100 
+    : 0;
+  
+  // Generate warnings
+  if (unmatchedBenchmarkOptions.length > 0) {
+    warnings.push(
+      `Benchmark tiene ${unmatchedBenchmarkOptions.length} opciones sin correspondencia: ${unmatchedBenchmarkOptions.join(', ')}`
+    );
+  }
+  
+  if (unmatchedSyntheticOptions.length > 0) {
+    warnings.push(
+      `Encuesta tiene ${unmatchedSyntheticOptions.length} opciones no cubiertas por benchmark: ${unmatchedSyntheticOptions.join(', ')}`
+    );
+  }
+  
+  if (matchPercentage < 80) {
+    warnings.push(
+      `Match de opciones es ${matchPercentage.toFixed(1)}% (recomendado: >80%)`
+    );
+  }
+  
+  const isValid = matchPercentage >= 50; // Al menos 50% para considerarse válido
+  
+  return {
+    isValid,
+    matchPercentage,
+    matchedOptions,
+    unmatchedBenchmarkOptions,
+    unmatchedSyntheticOptions,
+    warnings,
+  };
+}
+
+/**
+ * Get quality indicator for benchmark match
+ */
+export function getBenchmarkMatchQuality(matchPercentage: number): {
+  label: string;
+  color: string;
+} {
+  if (matchPercentage >= 90) {
+    return { label: 'Excelente', color: 'text-green-600' };
+  }
+  if (matchPercentage >= 80) {
+    return { label: 'Bueno', color: 'text-green-500' };
+  }
+  if (matchPercentage >= 60) {
+    return { label: 'Aceptable', color: 'text-yellow-600' };
+  }
+  if (matchPercentage >= 40) {
+    return { label: 'Débil', color: 'text-orange-600' };
+  }
+  return { label: 'Pobre', color: 'text-red-600' };
 }
 
 // ============================================================================

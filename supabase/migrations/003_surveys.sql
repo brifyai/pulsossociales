@@ -59,7 +59,7 @@ CREATE INDEX IF NOT EXISTS idx_survey_questions_order ON survey_questions(survey
 CREATE TABLE IF NOT EXISTS survey_runs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     survey_id UUID NOT NULL REFERENCES surveys(id) ON DELETE CASCADE,
-    territory_id UUID REFERENCES territories(id) ON DELETE SET NULL,
+    territory_id TEXT REFERENCES territories(id) ON DELETE SET NULL,
     name VARCHAR(255),
     description TEXT,
     sample_size INTEGER NOT NULL DEFAULT 100,
@@ -120,7 +120,7 @@ WHERE s.status = 'active'
 GROUP BY s.id;
 
 -- View: Survey run summary
-CREATE OR NULL VIEW survey_run_summary AS
+CREATE OR REPLACE VIEW survey_run_summary AS
 SELECT 
     sr.*,
     s.name as survey_name,
@@ -240,11 +240,13 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS update_surveys_updated_at ON surveys;
 CREATE TRIGGER update_surveys_updated_at
     BEFORE UPDATE ON surveys
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_survey_questions_updated_at ON survey_questions;
 CREATE TRIGGER update_survey_questions_updated_at
     BEFORE UPDATE ON survey_questions
     FOR EACH ROW
@@ -261,35 +263,45 @@ ALTER TABLE survey_runs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE survey_responses ENABLE ROW LEVEL SECURITY;
 
 -- Policies for surveys (read-only for anon, full for authenticated)
+DROP POLICY IF EXISTS "Allow read surveys" ON surveys;
 CREATE POLICY "Allow read surveys" ON surveys
     FOR SELECT TO anon, authenticated USING (true);
 
+DROP POLICY IF EXISTS "Allow insert surveys" ON surveys;
 CREATE POLICY "Allow insert surveys" ON surveys
     FOR INSERT TO authenticated WITH CHECK (true);
 
+DROP POLICY IF EXISTS "Allow update surveys" ON surveys;
 CREATE POLICY "Allow update surveys" ON surveys
     FOR UPDATE TO authenticated USING (true);
 
 -- Policies for survey questions
+DROP POLICY IF EXISTS "Allow read survey questions" ON survey_questions;
 CREATE POLICY "Allow read survey questions" ON survey_questions
     FOR SELECT TO anon, authenticated USING (true);
 
+DROP POLICY IF EXISTS "Allow insert survey questions" ON survey_questions;
 CREATE POLICY "Allow insert survey questions" ON survey_questions
     FOR INSERT TO authenticated WITH CHECK (true);
 
 -- Policies for survey runs
+DROP POLICY IF EXISTS "Allow read survey runs" ON survey_runs;
 CREATE POLICY "Allow read survey runs" ON survey_runs
     FOR SELECT TO anon, authenticated USING (true);
 
+DROP POLICY IF EXISTS "Allow insert survey runs" ON survey_runs;
 CREATE POLICY "Allow insert survey runs" ON survey_runs
     FOR INSERT TO authenticated WITH CHECK (true);
 
+DROP POLICY IF EXISTS "Allow update survey runs" ON survey_runs;
 CREATE POLICY "Allow update survey runs" ON survey_runs
     FOR UPDATE TO authenticated USING (true);
 
 -- Policies for survey responses
+DROP POLICY IF EXISTS "Allow read survey responses" ON survey_responses;
 CREATE POLICY "Allow read survey responses" ON survey_responses
     FOR SELECT TO anon, authenticated USING (true);
 
+DROP POLICY IF EXISTS "Allow insert survey responses" ON survey_responses;
 CREATE POLICY "Allow insert survey responses" ON survey_responses
     FOR INSERT TO authenticated WITH CHECK (true);
