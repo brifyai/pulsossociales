@@ -37,7 +37,15 @@ export default function Game() {
   const scrollViewRef = useRef<HTMLDivElement>(null);
 
   if (!worldId || !engineId || !game) {
-    return null;
+    return (
+      <div className="w-full h-full flex items-center justify-center bg-brown-900">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white/50 mx-auto mb-4" />
+          <p className="text-white/60 text-sm">Cargando mundo...</p>
+          <p className="text-white/40 text-xs mt-2">Conectando con Convex</p>
+        </div>
+      </div>
+    );
   }
   return (
     <>
