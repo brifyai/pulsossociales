@@ -1,7 +1,5 @@
 import MapRoot from './components/MapRoot';
 import { ToastContainer } from 'react-toastify';
-import a16zImg from '/assets/a16z.png';
-import convexImg from '/assets/convex.svg';
 import starImg from '/assets/star.svg';
 import helpImg from '/assets/help.svg';
 import { useState } from 'react';
@@ -11,7 +9,6 @@ import Button from './components/buttons/Button.tsx';
 import InteractButton from './components/buttons/InteractButton.tsx';
 import FreezeButton from './components/FreezeButton.tsx';
 import { MAX_HUMAN_PLAYERS } from '../convex/constants.ts';
-import PoweredByConvex from './components/PoweredByConvex.tsx';
 
 /**
  * App - Main entry point for Pulso Social (formerly AI Town)
@@ -60,18 +57,7 @@ export default function Home() {
             Help
           </Button>
         </div>
-        <div className="flex items-center gap-4 pointer-events-auto">
-          <a href="https://a16z.com">
-            <img className="w-8 h-8" src={a16zImg} alt="a16z" />
-          </a>
-          <a href="https://convex.dev/c/ai-town">
-            <img className="w-20 h-8" src={convexImg} alt="Convex" />
-          </a>
-        </div>
       </footer>
-
-      {/* PoweredByConvex badge - positioned to not conflict with MapRoot header */}
-      <PoweredByConvex />
 
       {/* Help Modal */}
       <ReactModal
