@@ -1,28 +1,25 @@
-import { TerritoryRegion, MapLayer, LAYER_CONFIGS, getScoreOpacity } from '../types/territory';
+import { TerritoryRegion, MapLayer, LAYER_CONFIGS, getScoreOpacity, MacroZone } from '../types/territory';
 import { useAppStore } from '../store/appStore';
 import { useTerritories, useTerritoriesWithEvents } from '../hooks/useTerritories';
+import { useState, useMemo } from 'react';
 
 /**
- * ChileMapView - Country-level strategic map
+ * ChileMapView - Premium country-level strategic map
+ * 
+ * Design Philosophy:
+ * - Clean, premium UI inspired by Google/Data visualization
+ * - Clear geographic representation of Chile's unique shape
+ * - Macrozone visual guides for better orientation
+ * - High contrast, accessible labels
+ * - Smooth interactions and clear visual feedback
+ * - Product-quality finish, not prototype/debug feel
  * 
  * Architecture:
- * - Data-driven: fetches regions from Supabase via useTerritories hook, uses activeLayer from store
- * - Layer visualization: shows different data dimensions (population, events, surveys, results)
- * - Interactive: regions are clickable to navigate to region view
- * - Responsive: uses percentage-based positioning for flexible layout
- * - Fallback: uses mocks if Supabase is not configured or fails
- * - Event-aware: when layer is 'events', fetches real event statistics from Supabase
- * 
- * Design decisions:
- * - Simplified vertical layout (not geographic projection) for clarity
- * - Color intensity represents data values (opacity-based)
- * - No heavy GeoJSON or mapping libraries (kept lightweight)
- * 
- * Data Flow:
- * 1. useTerritories or useTerritoriesWithEvents hook fetches from Supabase (with fallback to mocks)
- * 2. Regions are rendered as interactive markers
- * 3. Clicking a region triggers onRegionSelect callback
- * 4. When events layer is active, eventScore is calculated from real database events
+ * - Data-driven: fetches regions from Supabase via useTerritories hook
+ * - Layer visualization: shows different data dimensions
+ * - Interactive: regions are clickable with clear hover states
+ * - Responsive: percentage-based positioning optimized for Chile's shape
+ * - Macrozone bands: subtle visual guides for north/centro/sur/austral
  */
 interface ChileMapViewProps {
   /** Callback when a region is selected */
@@ -30,168 +27,364 @@ interface ChileMapViewProps {
 }
 
 /**
+ * Macrozone configuration for visual bands
+ */
+const MACROZONE_CONFIG: Record<MacroZone, { label: string; color: string; yStart: number; yEnd: number }> = {
+  norte_grande: { label: 'Norte Grande', color: 'from-amber-500/5', yStart: 0, yEnd: 35 },
+  norte_chico: { label: 'Norte Chico', color: 'from-yellow-500/5', yStart: 35, yEnd: 60 },
+  centro: { label: 'Zona Central', color: 'from-green-500/5', yStart: 60, yEnd: 105 },
+  sur: { label: 'Zona Sur', color: 'from-blue-500/5', yStart: 105, yEnd: 155 },
+  austral: { label: 'Zona Austral', color: 'from-purple-500/5', yStart: 155, yEnd: 185 },
+};
+
+/**
  * ChileMapView Component
  * 
- * Displays all Chilean regions as interactive markers on a simplified map.
- * Visual appearance changes based on the active layer from the store.
- * Data is loaded from Supabase with automatic fallback to mocks.
- * When the events layer is active, fetches real event statistics from Supabase.
+ * Displays all Chilean regions as an elegant, premium territorial visualization.
+ * Features macrozone guides, improved typography, and clear visual hierarchy.
  */
 export default function ChileMapView({ onRegionSelect }: ChileMapViewProps) {
   const { activeLayer } = useAppStore();
+  const [hoveredRegion, setHoveredRegion] = useState<string | null>(null);
+  const [tooltip, setTooltip] = useState<{ region: TerritoryRegion; x: number | undefined; y: number | undefined } | null>(null);
   
   // Use different hooks based on active layer
-  // For events layer, use hook that fetches real event statistics
   const territoriesData = activeLayer === 'events' 
     ? useTerritoriesWithEvents()
     : useTerritories();
   
   const { regions, loading, error } = territoriesData;
   
-  // Get layer configuration for current active layer
+  // Get layer configuration
   const layerConfig = LAYER_CONFIGS[activeLayer];
 
-  // Show loading state
+  // Group regions by macrozone for rendering
+  const regionsByZone = useMemo(() => {
+    const grouped: Record<MacroZone, TerritoryRegion[]> = {
+      norte_grande: [],
+      norte_chico: [],
+      centro: [],
+      sur: [],
+      austral: [],
+    };
+    regions.forEach(r => {
+      grouped[r.macroZone].push(r);
+    });
+    return grouped;
+  }, [regions]);
+
   if (loading) {
     return (
-      <div className="relative w-full h-full bg-brown-900 overflow-hidden flex items-center justify-center">
+      <div className="relative w-full h-full bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 overflow-hidden flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white/50 mx-auto mb-4" />
-          <p className="text-white/60 text-sm">Cargando territorios...</p>
+          <p className="text-white/60 text-sm font-medium">Cargando territorios...</p>
         </div>
       </div>
     );
   }
 
-  // Show error state (but still render with available data)
-  const hasError = error && regions.length === 0;
-
   return (
-    <div className="relative w-full h-full bg-brown-900 overflow-hidden">
-      {/* DEBUG: Marcador visual inequívoco */}
-      <div className="fixed top-20 left-20 z-[9999] bg-red-600 text-white p-4 text-2xl font-bold rounded shadow-lg animate-pulse">
-        🗺️ NUEVA SHELL ACTIVA - ChileMapView
-      </div>
-
-      {/* Map Title */}
-      <div className="absolute top-4 left-4 z-10">
-        <h2 className="text-2xl font-display text-white/90">Chile</h2>
-        <p className="text-sm text-white/60 mt-1">
-          {layerConfig.description}
-        </p>
-        {error && (
-          <p className="text-xs text-yellow-500/80 mt-1">
-            ⚠️ Usando datos locales
-          </p>
-        )}
-      </div>
-
-      {/* Map Container - uses padding to create map area */}
-      <div className="relative w-full h-full p-8 pt-20">
-        {/* Map Background - subtle grid pattern */}
-        <div 
-          className="absolute inset-0 opacity-5"
-          style={{
-            backgroundImage: `
-              linear-gradient(to right, white 1px, transparent 1px),
-              linear-gradient(to bottom, white 1px, transparent 1px)
-            `,
-            backgroundSize: '20px 20px',
-          }}
-        />
-
-        {/* Error State - No data available */}
-        {hasError && (
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="text-center p-6 bg-brown-800/80 rounded-lg border border-red-500/30">
-              <p className="text-red-400 text-sm mb-2">Error al cargar datos</p>
-              <p className="text-white/50 text-xs">{error}</p>
+    <div className="relative w-full h-full bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 overflow-hidden">
+      {/* Premium Header */}
+      <div className="absolute top-0 left-0 right-0 z-20 px-6 py-5">
+        <div className="flex items-start justify-between">
+          <div>
+            <h1 className="text-3xl font-light text-white tracking-tight">
+              República de <span className="font-semibold">Chile</span>
+            </h1>
+            <p className="text-sm text-white/50 mt-1 max-w-md">
+              {layerConfig.description}
+            </p>
+            {error && (
+              <p className="text-xs text-amber-400/80 mt-2 flex items-center gap-1">
+                <span>⚠️</span> Usando datos locales
+              </p>
+            )}
+          </div>
+          
+          {/* Active Layer Indicator */}
+          <div className="flex items-center gap-3 bg-white/5 backdrop-blur-md rounded-full px-4 py-2 border border-white/10">
+            <span className="text-lg">{layerConfig.icon}</span>
+            <div className="text-right">
+              <p className="text-xs text-white/40 uppercase tracking-wider">Capa activa</p>
+              <p className="text-sm font-medium text-white">{layerConfig.label}</p>
             </div>
           </div>
-        )}
+        </div>
+      </div>
 
-        {/* Region Markers */}
-        <div className="relative w-full h-full">
-          {regions.map((region) => (
-            <RegionMarker
-              key={region.id}
-              region={region}
-              activeLayer={activeLayer}
-              onClick={() => onRegionSelect(region)}
+      {/* Map Container */}
+      <div className="relative w-full h-full pt-24 pb-8 px-4">
+        {/* Chile Shape Container - optimized for vertical layout */}
+        <div className="relative w-full h-full max-w-3xl mx-auto">
+          
+          {/* Macrozone Background Bands */}
+          {Object.entries(MACROZONE_CONFIG).map(([zone, config]) => (
+            <MacrozoneBand
+              key={zone}
+              zone={zone as MacroZone}
+              config={config}
+              regions={regionsByZone[zone as MacroZone]}
             />
           ))}
-        </div>
 
-        {/* Legend */}
-        <MapLegend activeLayer={activeLayer} />
+          {/* Subtle Grid Pattern */}
+          <div 
+            className="absolute inset-0 opacity-[0.03] pointer-events-none"
+            style={{
+              backgroundImage: `
+                linear-gradient(to right, white 1px, transparent 1px),
+                linear-gradient(to bottom, white 1px, transparent 1px)
+              `,
+              backgroundSize: '40px 40px',
+            }}
+          />
+
+          {/* Region Markers */}
+          <div className="relative w-full h-full">
+            {regions.map((region) => (
+              <RegionMarker
+                key={region.id}
+                region={region}
+                activeLayer={activeLayer}
+                isHovered={hoveredRegion === region.id}
+                isSelected={false}
+                onHover={(isHovered) => {
+                  setHoveredRegion(isHovered ? region.id : null);
+                }}
+                onTooltip={(region, x, y) => setTooltip(region ? { region, x, y } : null)}
+                onClick={() => onRegionSelect(region)}
+              />
+            ))}
+          </div>
+
+          {/* Legend */}
+          <MapLegend activeLayer={activeLayer} />
+        </div>
+      </div>
+
+      {/* Tooltip */}
+      {tooltip && tooltip.x !== undefined && tooltip.y !== undefined && (
+        <RegionTooltip
+          region={tooltip.region}
+          activeLayer={activeLayer}
+          x={tooltip.x}
+          y={tooltip.y}
+        />
+      )}
+    </div>
+  );
+}
+
+/**
+ * MacrozoneBand - Visual band for each macrozone
+ */
+interface MacrozoneBandProps {
+  zone: MacroZone;
+  config: { label: string; color: string; yStart: number; yEnd: number };
+  regions: TerritoryRegion[];
+}
+
+function MacrozoneBand({ zone, config, regions }: MacrozoneBandProps) {
+  const top = `${(config.yStart / 185) * 100}%`;
+  const height = `${((config.yEnd - config.yStart) / 185) * 100}%`;
+  
+  return (
+    <div
+      className={`absolute left-0 right-0 bg-gradient-to-r ${config.color} to-transparent pointer-events-none`}
+      style={{ top, height }}
+    >
+      {/* Zone Label */}
+      <div className="absolute left-2 top-1/2 -translate-y-1/2">
+        <span className="text-[10px] uppercase tracking-widest text-white/20 font-medium writing-mode-vertical">
+          {config.label}
+        </span>
+      </div>
+      
+      {/* Region count indicator */}
+      {regions.length > 0 && (
+        <div className="absolute right-2 top-2">
+          <span className="text-[10px] text-white/30">
+            {regions.length} reg.{regions.length > 1 ? '' : ''}
+          </span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * RegionMarker - Enhanced individual region marker
+ */
+interface RegionMarkerProps {
+  region: TerritoryRegion;
+  activeLayer: MapLayer;
+  isHovered: boolean;
+  isSelected: boolean;
+  onHover: (isHovered: boolean) => void;
+  onTooltip: (region: TerritoryRegion | null, x?: number, y?: number) => void;
+  onClick: () => void;
+}
+
+function RegionMarker({ 
+  region, 
+  activeLayer, 
+  isHovered, 
+  isSelected,
+  onHover, 
+  onTooltip,
+  onClick 
+}: RegionMarkerProps) {
+  const score = region[layerScoreField[activeLayer]] as number;
+  const opacity = getScoreOpacity(score);
+  const layerConfig = LAYER_CONFIGS[activeLayer];
+
+  // Calculate position - optimized for Chile's vertical shape
+  // y ranges from 0-185, we map to percentage
+  const left = `${region.x}%`;
+  const top = `${(region.y / 185) * 100}%`;
+  
+  // Size based on population/importance
+  const baseSize = region.radius * 10;
+  const size = isHovered ? baseSize * 1.3 : baseSize;
+
+  return (
+    <div
+      className="absolute"
+      style={{
+        left,
+        top,
+        transform: 'translate(-50%, -50%)',
+        zIndex: isHovered ? 50 : 10,
+      }}
+      onMouseEnter={(e) => {
+        onHover(true);
+        onTooltip(region, e.clientX, e.clientY);
+      }}
+      onMouseLeave={() => {
+        onHover(false);
+        onTooltip(null);
+      }}
+      onMouseMove={(e) => onTooltip(region, e.clientX, e.clientY)}
+    >
+      {/* Outer glow for selected/hovered */}
+      {(isHovered || isSelected) && (
+        <div 
+          className={`absolute rounded-full animate-pulse ${layerConfig.color} opacity-30`}
+          style={{
+            width: size * 1.5,
+            height: size * 1.5,
+            left: '50%',
+            top: '50%',
+            transform: 'translate(-50%, -50%)',
+          }}
+        />
+      )}
+      
+      {/* Main marker */}
+      <button
+        onClick={onClick}
+        className={`
+          relative rounded-full 
+          transition-all duration-300 ease-out
+          focus:outline-none focus:ring-2 focus:ring-white/50
+          ${layerConfig.color}
+          ${opacity}
+          ${isHovered ? 'scale-110 shadow-lg shadow-white/20' : ''}
+          ${isSelected ? 'ring-2 ring-white ring-offset-2 ring-offset-slate-900' : ''}
+        `}
+        style={{
+          width: size,
+          height: size,
+        }}
+      >
+        {/* Inner highlight */}
+        <div className="absolute inset-0 rounded-full bg-gradient-to-br from-white/30 to-transparent" />
+        
+        {/* Pulse for high activity */}
+        {score >= 80 && !isHovered && (
+          <span className="absolute inset-0 rounded-full animate-ping opacity-20 bg-white" />
+        )}
+      </button>
+      
+      {/* Label - always visible for larger regions, on hover for smaller */}
+      <div 
+        className={`
+          absolute left-1/2 -translate-x-1/2 mt-1
+          transition-all duration-200
+          ${isHovered || region.radius >= 4 ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-1'}
+        `}
+        style={{ top: size / 2 }}
+      >
+        <span className={`
+          text-xs font-medium whitespace-nowrap
+          ${isHovered ? 'text-white' : 'text-white/70'}
+          drop-shadow-lg
+        `}>
+          {region.shortName}
+        </span>
       </div>
     </div>
   );
 }
 
 /**
- * RegionMarker - Individual region marker on the map
- * 
- * Props:
- * - region: Territory data
- * - activeLayer: Current visualization layer
- * - onClick: Click handler
+ * RegionTooltip - Floating tooltip on hover
  */
-interface RegionMarkerProps {
+interface RegionTooltipProps {
   region: TerritoryRegion;
   activeLayer: MapLayer;
-  onClick: () => void;
+  x: number;
+  y: number;
 }
 
-function RegionMarker({ region, activeLayer, onClick }: RegionMarkerProps) {
-  // Get the score for the current layer
-  const score = region[layerScoreField[activeLayer]] as number;
-  const opacity = getScoreOpacity(score);
+function RegionTooltip({ region, activeLayer, x, y }: RegionTooltipProps) {
   const layerConfig = LAYER_CONFIGS[activeLayer];
-
-  // Calculate position (convert percentage to CSS)
-  // Note: y is stretched to accommodate Chile's long shape
-  const left = `${region.x}%`;
-  const top = `${(region.y / 180) * 100}%`;
-  const size = `${region.radius * 8}px`;
-
+  const score = region[layerScoreField[activeLayer]] as number;
+  
+  // Position tooltip near cursor but keep on screen
+  const tooltipX = Math.min(x + 16, window.innerWidth - 200);
+  const tooltipY = Math.min(y + 16, window.innerHeight - 120);
+  
   return (
-    <button
-      onClick={onClick}
-      className={`
-        absolute rounded-full 
-        transition-all duration-200 ease-out
-        hover:scale-110 hover:z-10
-        focus:outline-none focus:ring-2 focus:ring-white/50
-        ${layerConfig.color}
-        ${opacity}
-      `}
-      style={{
-        left,
-        top,
-        width: size,
-        height: size,
-        transform: 'translate(-50%, -50%)',
-      }}
-      title={`${region.name} - ${layerConfig.label}: ${score}`}
+    <div 
+      className="fixed z-50 bg-slate-800/95 backdrop-blur-md rounded-lg p-3 border border-white/10 shadow-xl pointer-events-none"
+      style={{ left: tooltipX, top: tooltipY }}
     >
-      {/* Inner content - region short name on larger markers */}
-      {region.radius >= 4 && (
-        <span className="absolute inset-0 flex items-center justify-center text-[8px] font-bold text-white/90 truncate px-1">
-          {region.shortName}
-        </span>
-      )}
+      <div className="flex items-center gap-2 mb-2">
+        <span className="text-lg">{layerConfig.icon}</span>
+        <span className="font-semibold text-white">{region.name}</span>
+      </div>
       
-      {/* Pulse animation for high activity */}
-      {score >= 80 && (
-        <span className="absolute inset-0 rounded-full animate-ping opacity-30 bg-white" />
-      )}
-    </button>
+      <div className="space-y-1 text-sm">
+        <div className="flex justify-between gap-4">
+          <span className="text-white/50">{layerConfig.label}</span>
+          <span className="font-medium text-white">{score}/100</span>
+        </div>
+        <div className="flex justify-between gap-4">
+          <span className="text-white/50">Población</span>
+          <span className="text-white/70">{region.population?.toLocaleString('es-CL')}</span>
+        </div>
+        <div className="flex justify-between gap-4">
+          <span className="text-white/50">Capital</span>
+          <span className="text-white/70">{region.capital}</span>
+        </div>
+      </div>
+      
+      {/* Score bar */}
+      <div className="mt-3 h-1.5 bg-white/10 rounded-full overflow-hidden">
+        <div 
+          className={`h-full ${layerConfig.color} opacity-100`}
+          style={{ width: `${score}%` }}
+        />
+      </div>
+    </div>
   );
 }
 
 /**
- * MapLegend - Shows the legend for the current layer
+ * MapLegend - Enhanced legend for the current layer
  */
 interface MapLegendProps {
   activeLayer: MapLayer;
@@ -201,24 +394,44 @@ function MapLegend({ activeLayer }: MapLegendProps) {
   const layerConfig = LAYER_CONFIGS[activeLayer];
   
   return (
-    <div className="absolute bottom-4 right-4 bg-brown-800/90 backdrop-blur-sm rounded-lg p-3 border border-brown-700">
-      <div className="flex items-center gap-2 mb-2">
-        <span className="text-lg">{layerConfig.icon}</span>
-        <span className="text-sm font-medium text-white/90">{layerConfig.label}</span>
+    <div className="absolute bottom-4 right-4 bg-slate-800/90 backdrop-blur-md rounded-xl p-4 border border-white/10 shadow-xl">
+      <div className="flex items-center gap-3 mb-3">
+        <div className={`w-10 h-10 rounded-lg ${layerConfig.color} opacity-80 flex items-center justify-center text-xl`}>
+          {layerConfig.icon}
+        </div>
+        <div>
+          <p className="font-semibold text-white">{layerConfig.label}</p>
+          <p className="text-xs text-white/50">Intensidad visual</p>
+        </div>
       </div>
       
       {/* Intensity scale */}
-      <div className="flex items-center gap-1">
-        <span className="text-xs text-white/50">Bajo</span>
-        <div className="flex gap-0.5">
+      <div className="flex items-center gap-2">
+        <span className="text-xs text-white/40">Bajo</span>
+        <div className="flex gap-1">
           {[20, 40, 60, 80, 100].map((score) => (
             <div
               key={score}
-              className={`w-4 h-4 rounded-sm ${layerConfig.color} ${getScoreOpacity(score)}`}
+              className={`w-6 h-6 rounded-md ${layerConfig.color} ${getScoreOpacity(score)}`}
             />
           ))}
         </div>
-        <span className="text-xs text-white/50">Alto</span>
+        <span className="text-xs text-white/40">Alto</span>
+      </div>
+      
+      {/* Macrozone guide */}
+      <div className="mt-4 pt-3 border-t border-white/10">
+        <p className="text-xs text-white/40 mb-2">Macrozonas</p>
+        <div className="flex flex-wrap gap-2">
+          {Object.entries(MACROZONE_CONFIG).map(([zone, config]) => (
+            <span 
+              key={zone}
+              className="text-[10px] px-2 py-0.5 rounded-full bg-white/5 text-white/50"
+            >
+              {config.label}
+            </span>
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -226,7 +439,6 @@ function MapLegend({ activeLayer }: MapLegendProps) {
 
 /**
  * Mapping from layer to score field
- * Centralizes which field to read for each layer
  */
 const layerScoreField: Record<MapLayer, keyof TerritoryRegion> = {
   population: 'populationScore',
