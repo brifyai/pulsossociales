@@ -192,7 +192,7 @@ export async function loadBenchmarkFromSupabase(
     return null;
   }
 
-  console.log(`[ValidationReal] Benchmark cargado: ${benchmark.name}`);
+  console.log(`[ValidationReal] Benchmark cargado: ${(benchmark as { name: string }).name}`);
   console.log(`[ValidationReal] Data points: ${dataPoints?.length || 0}`);
 
   return {
@@ -232,8 +232,9 @@ export async function findSurveyForBenchmark(
   let bestMatch: Survey | null = null;
   let bestMatchCount = 0;
 
-  for (const survey of surveys) {
-    const surveyQuestions = (survey.questions || []) as SurveyQuestion[];
+  for (const survey of surveys as unknown[]) {
+    const s = survey as { questions?: SurveyQuestion[]; name: string };
+    const surveyQuestions = (s.questions || []) as SurveyQuestion[];
     const surveyQuestionCodes = surveyQuestions.map((q: SurveyQuestion) => q.code);
     const matchCount = questionCodes.filter(code => surveyQuestionCodes.includes(code)).length;
 
@@ -289,7 +290,7 @@ export async function loadAgentsFromSupabase(
   }
 
   // Mapear a FullAgent (con memory vacío ya que no viene de Supabase)
-  const fullAgents: FullAgent[] = (agents || []).map((agent: unknown) => {
+  let fullAgents: FullAgent[] = (agents || []).map((agent: unknown) => {
     const a = agent as {
       profile: unknown;
       traits: unknown;
@@ -433,7 +434,7 @@ export async function runRealValidation(
 
   const { data: run, error: runError } = await supabase
     .from('survey_runs')
-    .insert(runInsert)
+    .insert(runInsert as any)
     .select()
     .single();
 
@@ -496,7 +497,7 @@ export async function runRealValidation(
   // 9. Guardar en validation_runs
   const validationRunInsert: ValidationRunInsert = {
     survey_id: survey.id,
-    survey_run_id: run.id,
+    survey_run_id: (run as { id: string }).id,
     benchmark_id: config.benchmarkId,
     territory_id: config.territoryId ?? null,
     engine_version: ENGINE_VERSION,
@@ -515,7 +516,7 @@ export async function runRealValidation(
 
   const { data: validationRun, error: validationError } = await supabase
     .from('validation_runs')
-    .insert(validationRunInsert)
+    .insert(validationRunInsert as any)
     .select()
     .single();
 
@@ -523,7 +524,7 @@ export async function runRealValidation(
   if (validationError || !validationRun) {
     console.error('[ValidationReal] Error guardando validation_run:', validationError);
   } else {
-    validationRunId = validationRun.id;
+    validationRunId = (validationRun as { id: string }).id;
     // 10. Guardar resultados por pregunta
     for (const qr of questionResults) {
       const resultInsert: ValidationResultInsert = {
@@ -536,7 +537,7 @@ export async function runRealValidation(
         mae: qr.mae,
         similarity_score: qr.similarity,
       };
-      await supabase.from('validation_results').insert(resultInsert);
+      await supabase.from('validation_results').insert(resultInsert as any);
     }
   }
 
