@@ -68,6 +68,11 @@ export default function ChileMapView({ onRegionSelect }: ChileMapViewProps) {
 
   return (
     <div className="relative w-full h-full bg-brown-900 overflow-hidden">
+      {/* DEBUG: Marcador visual inequívoco */}
+      <div className="fixed top-20 left-20 z-[9999] bg-red-600 text-white p-4 text-2xl font-bold rounded shadow-lg animate-pulse">
+        🗺️ NUEVA SHELL ACTIVA - ChileMapView
+      </div>
+
       {/* Map Title */}
       <div className="absolute top-4 left-4 z-10">
         <h2 className="text-2xl font-display text-white/90">Chile</h2>
