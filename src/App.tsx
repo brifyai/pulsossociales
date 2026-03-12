@@ -1,13 +1,9 @@
-import Game from './components/Game.tsx';
-
+import MapRoot from './components/MapRoot';
 import { ToastContainer } from 'react-toastify';
 import a16zImg from '/assets/a16z.png';
 import convexImg from '/assets/convex.svg';
 import starImg from '/assets/star.svg';
 import helpImg from '/assets/help.svg';
-// import { UserButton } from '@clerk/clerk-react';
-// import { Authenticated, Unauthenticated } from 'convex/react';
-// import LoginButton from './components/buttons/LoginButton.tsx';
 import { useState } from 'react';
 import ReactModal from 'react-modal';
 import MusicButton from './components/buttons/MusicButton.tsx';
@@ -17,12 +13,67 @@ import FreezeButton from './components/FreezeButton.tsx';
 import { MAX_HUMAN_PLAYERS } from '../convex/constants.ts';
 import PoweredByConvex from './components/PoweredByConvex.tsx';
 
+/**
+ * App - Main entry point for Pulso Social (formerly AI Town)
+ * 
+ * Architecture:
+ * - MapRoot: Handles 3-level navigation (country → region → agent)
+ * - Footer: Original AI Town controls (preserved for compatibility)
+ * - Modal: Help dialog
+ * 
+ * Layout:
+ * - Full-screen MapRoot with its own internal header
+ * - Fixed footer overlay for game controls
+ * - Modal overlays everything when open
+ * 
+ * 3-Level Navigation (handled by MapRoot):
+ * 1. Country: ChileMapView - Map of Chile with clickable regions
+ * 2. Region: RegionSceneView - AI Town world for selected region
+ * 3. Agent: AgentInspectorPanel - Overlay panel on top of region view
+ */
 export default function Home() {
   const [helpModalOpen, setHelpModalOpen] = useState(false);
+  
   return (
-    <main className="relative flex min-h-screen flex-col items-center justify-between font-body game-background">
+    <div className="relative min-h-screen font-body game-background overflow-hidden">
+      {/* 
+        MapRoot - Main application shell
+        Handles all 3-level navigation internally
+        Takes full viewport height
+      */}
+      <MapRoot />
+
+      {/* 
+        Footer - Original AI Town controls
+        Fixed at bottom, overlays MapRoot
+        Preserved for backward compatibility
+      */}
+      <footer className="fixed bottom-0 left-0 right-0 flex items-center gap-3 p-4 flex-wrap pointer-events-none z-50 bg-gradient-to-t from-black/50 to-transparent">
+        <div className="flex gap-4 flex-grow pointer-events-auto">
+          <FreezeButton />
+          <MusicButton />
+          <Button href="https://github.com/a16z-infra/ai-town" imgUrl={starImg}>
+            Star
+          </Button>
+          <InteractButton />
+          <Button imgUrl={helpImg} onClick={() => setHelpModalOpen(true)}>
+            Help
+          </Button>
+        </div>
+        <div className="flex items-center gap-4 pointer-events-auto">
+          <a href="https://a16z.com">
+            <img className="w-8 h-8" src={a16zImg} alt="a16z" />
+          </a>
+          <a href="https://convex.dev/c/ai-town">
+            <img className="w-20 h-8" src={convexImg} alt="Convex" />
+          </a>
+        </div>
+      </footer>
+
+      {/* PoweredByConvex badge - positioned to not conflict with MapRoot header */}
       <PoweredByConvex />
 
+      {/* Help Modal */}
       <ReactModal
         isOpen={helpModalOpen}
         onRequestClose={() => setHelpModalOpen(false)}
@@ -31,92 +82,40 @@ export default function Home() {
         ariaHideApp={false}
       >
         <div className="font-body">
-          <h1 className="text-center text-6xl font-bold font-display game-title">Help</h1>
-          <p>
-            Welcome to AI town. AI town supports both anonymous <i>spectators</i> and logged in{' '}
-            <i>interactivity</i>.
-          </p>
-          <h2 className="text-4xl mt-4">Spectating</h2>
-          <p>
-            Click and drag to move around the town, and scroll in and out to zoom. You can click on
-            an individual character to view its chat history.
-          </p>
-          <h2 className="text-4xl mt-4">Interactivity</h2>
-          <p>
-            If you log in, you can join the simulation and directly talk to different agents! After
-            logging in, click the "Interact" button, and your character will appear somewhere on the
-            map with a highlighted circle underneath you.
-          </p>
-          <p className="text-2xl mt-2">Controls:</p>
-          <p className="mt-4">Click to navigate around.</p>
+          <h1 className="text-center text-6xl font-bold font-display game-title">Ayuda</h1>
           <p className="mt-4">
-            To talk to an agent, click on them and then click "Start conversation," which will ask
-            them to start walking towards you. Once they're nearby, the conversation will start, and
-            you can speak to each other. You can leave at any time by closing the conversation pane
-            or moving away. They may propose a conversation to you - you'll see a button to accept
-            in the messages panel.
+            Bienvenido a Pulso Social. Esta plataforma permite realizar encuestas sintéticas
+            con agentes de IA distribuidos por regiones de Chile.
           </p>
-          <p className="mt-4">
-            AI town only supports {MAX_HUMAN_PLAYERS} humans at a time. If you're idle for five
-            minutes, you'll be automatically removed from the simulation.
+          <h2 className="text-4xl mt-6">Navegación</h2>
+          <p className="mt-2">
+            La aplicación tiene 3 niveles de navegación:
+          </p>
+          <ul className="list-disc ml-6 mt-2 space-y-1">
+            <li><strong>Nivel País:</strong> Mapa de Chile con todas las regiones. Haz click en una región para explorarla.</li>
+            <li><strong>Nivel Región:</strong> Vista del mundo AI Town para la región seleccionada. Observa a los agentes interactuar.</li>
+            <li><strong>Nivel Agente:</strong> Panel de inspección detallada de un agente específico. Se abre como panel lateral.</li>
+          </ul>
+          <h2 className="text-4xl mt-6">Interactividad</h2>
+          <p className="mt-2">
+            En la vista de región, haz click en los agentes (botones circulares en el header)
+            para ver sus detalles. Usa los breadcrumbs para navegar entre niveles.
+          </p>
+          <p className="mt-4 text-brown-400">
+            Pulso Social soporta hasta {MAX_HUMAN_PLAYERS} humanos simultáneos.
           </p>
         </div>
       </ReactModal>
-      {/*<div className="p-3 absolute top-0 right-0 z-10 text-2xl">
-        <Authenticated>
-          <UserButton afterSignOutUrl="/ai-town" />
-        </Authenticated>
-
-        <Unauthenticated>
-          <LoginButton />
-        </Unauthenticated>
-      </div> */}
-
-      <div className="w-full lg:h-screen min-h-screen relative isolate overflow-hidden lg:p-8 shadow-2xl flex flex-col justify-start">
-        <h1 className="mx-auto text-4xl p-3 sm:text-8xl lg:text-9xl font-bold font-display leading-none tracking-wide game-title w-full text-left sm:text-center sm:w-auto">
-          AI Town
-        </h1>
-
-        <div className="max-w-xs md:max-w-xl lg:max-w-none mx-auto my-4 text-center text-base sm:text-xl md:text-2xl text-white leading-tight shadow-solid">
-          A virtual town where AI characters live, chat and socialize.
-          {/* <Unauthenticated>
-            <div className="my-1.5 sm:my-0" />
-            Log in to join the town
-            <br className="block sm:hidden" /> and the conversation!
-          </Unauthenticated> */}
-        </div>
-
-        <Game />
-
-        <footer className="justify-end bottom-0 left-0 w-full flex items-center mt-4 gap-3 p-6 flex-wrap pointer-events-none">
-          <div className="flex gap-4 flex-grow pointer-events-none">
-            <FreezeButton />
-            <MusicButton />
-            <Button href="https://github.com/a16z-infra/ai-town" imgUrl={starImg}>
-              Star
-            </Button>
-            <InteractButton />
-            <Button imgUrl={helpImg} onClick={() => setHelpModalOpen(true)}>
-              Help
-            </Button>
-          </div>
-          <a href="https://a16z.com">
-            <img className="w-8 h-8 pointer-events-auto" src={a16zImg} alt="a16z" />
-          </a>
-          <a href="https://convex.dev/c/ai-town">
-            <img className="w-20 h-8 pointer-events-auto" src={convexImg} alt="Convex" />
-          </a>
-        </footer>
-        <ToastContainer position="bottom-right" autoClose={2000} closeOnClick theme="dark" />
-      </div>
-    </main>
+      
+      <ToastContainer position="bottom-right" autoClose={2000} closeOnClick theme="dark" />
+    </div>
   );
 }
 
 const modalStyles = {
   overlay: {
     backgroundColor: 'rgb(0, 0, 0, 75%)',
-    zIndex: 12,
+    zIndex: 100,
   },
   content: {
     top: '50%',
@@ -125,7 +124,9 @@ const modalStyles = {
     bottom: 'auto',
     marginRight: '-50%',
     transform: 'translate(-50%, -50%)',
-    maxWidth: '50%',
+    maxWidth: '80%',
+    maxHeight: '80%',
+    overflow: 'auto',
 
     border: '10px solid rgb(23, 20, 33)',
     borderRadius: '0',
