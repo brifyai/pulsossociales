@@ -1,8 +1,28 @@
 /**
  * Validation Runner - Ejecutor de Validación Sintética
  *
- * Este módulo ejecuta una corrida de validación controlada contra el benchmark CEP.
+ * ⚠️ DEPRECATED: Este módulo usa simulación blanda con ruido sobre el benchmark.
+ * NO representa el comportamiento real del motor SurveyEngineV2.
+ *
+ * @deprecated Use src/lib/validationRunnerReal.ts en su lugar
+ * @see docs/VALIDATION_AUDIT_FINDINGS.md para detalles del hallazgo
  */
+
+// ============================================================================
+// ⚠️ ADVERTENCIA METODOLÓGICA
+// ============================================================================
+// Este archivo implementa una "validación" que:
+// 1. TOMA el benchmark como input
+// 2. AGREGA ruido aleatorio
+// 3. REPORTA como "resultado sintético"
+// 4. COMPARA contra el benchmark original
+//
+// Esto NO valida el motor real. Solo valida que el ruido no es demasiado grande.
+// Los resultados de "alta similitud" son artefactos del método, no evidencia real.
+//
+// Para validación REAL usar: src/lib/validationRunnerReal.ts
+// ============================================================================
+
 
 import { CEP_OCT_2024_DATA, getCEPBenchmarkData } from './validationBenchmark';
 import { VALIDATION_CONFIG, getValidationQuestionCodes, THEORETICAL_EXPECTATIONS } from './validationSurvey';
