@@ -36,6 +36,13 @@ export type SurveyRunType = 'synthetic' | 'real' | 'hybrid';
 export type SurveyRunStatus = 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
 export type AnswerType = 'single_choice' | 'multiple_choice' | 'scale' | 'text' | 'number' | 'boolean';
 
+// Benchmark and Validation types
+export type BenchmarkStatus = 'draft' | 'active' | 'archived' | 'deprecated';
+export type BenchmarkSource = 'CEP' | 'CADEM' | 'Pulso Ciudadano' | 'Data Influye' | 'Activa' | 'Cadem' | 'Other';
+export type BenchmarkTerritoryScope = 'national' | 'regional' | 'communal';
+export type ValidationRunStatus = 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
+export type MatchQuality = 'excellent' | 'good' | 'fair' | 'poor' | 'critical';
+
 // ============================================================================
 // TABLAS PRINCIPALES
 // ============================================================================
@@ -562,6 +569,156 @@ export interface SurveyResult {
 }
 
 // ============================================================================
+// TABLAS DE BENCHMARKS Y VALIDACIÓN
+// ============================================================================
+
+/**
+ * SurveyBenchmark - Fuentes de benchmark oficiales
+ * Tabla: survey_benchmarks
+ */
+export interface SurveyBenchmark {
+  id: string;                           // UUID
+  name: string;
+  description: string | null;
+  source: string;                       // 'CEP', 'CADEM', etc.
+  source_wave: string | null;           // 'Oct 2024', 'Wave 3'
+  source_url: string | null;
+  field_date_start: string | null;      // ISO 8601 date
+  field_date_end: string | null;        // ISO 8601 date
+  publication_date: string | null;      // ISO 8601 date
+  sample_size: number | null;
+  margin_of_error: number | null;       // e.g., 2.6 for ±2.6%
+  confidence_level: number | null;      // Usually 95.0
+  methodology: string | null;
+  territory_scope: BenchmarkTerritoryScope;
+  territory_id: string | null;          // FK a territories
+  status: BenchmarkStatus;
+  notes: string | null;
+  created_by: string | null;            // UUID auth.users
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * BenchmarkDataPoint - Datos de benchmark por pregunta
+ * Tabla: benchmark_data_points
+ */
+export interface BenchmarkDataPoint {
+  id: string;                           // UUID
+  benchmark_id: string;                 // FK a survey_benchmarks
+  question_code: string;
+  question_text: string | null;
+  question_category: string | null;     // 'political', 'economic', 'social'
+  answer_type: AnswerType | null;
+  options_json: Record<string, unknown>[] | null;
+  distribution_json: Record<string, unknown>; // Benchmark distribution
+  sample_size: number | null;
+  metadata_json: Record<string, unknown> | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * ValidationRun - Ejecuciones de validación
+ * Tabla: validation_runs
+ */
+export interface ValidationRun {
+  id: string;                           // UUID
+  survey_id: string;                    // FK a surveys
+  survey_run_id: string | null;         // FK a survey_runs (optional)
+  benchmark_id: string;                 // FK a survey_benchmarks
+  territory_id: string | null;          // FK a territories
+  engine_version: string;               // '2.0.0'
+  engine_config_json: Record<string, unknown> | null;
+  status: ValidationRunStatus;
+  started_at: string | null;
+  completed_at: string | null;
+  average_similarity_score: number | null;  // 0-1
+  average_mae: number | null;               // Mean Absolute Error
+  average_rmse: number | null;              // Root Mean Square Error
+  weighted_similarity_score: number | null; // Weighted by importance
+  total_questions: number;
+  matched_questions: number;
+  synthetic_sample_size: number | null;
+  benchmark_sample_size: number | null;
+  summary_json: Record<string, unknown> | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * ValidationResult - Resultados por pregunta de validación
+ * Tabla: validation_results
+ */
+export interface ValidationResult {
+  id: string;                           // UUID
+  validation_run_id: string;            // FK a validation_runs
+  question_code: string;
+  question_text: string | null;
+  question_category: string | null;
+  synthetic_distribution_json: Record<string, unknown>; // Our results
+  benchmark_distribution_json: Record<string, unknown>; // Benchmark data
+  mae: number | null;                   // Mean Absolute Error
+  rmse: number | null;                  // Root Mean Square Error
+  max_absolute_error: number | null;
+  similarity_score: number | null;      // 0-1, overall similarity
+  cosine_similarity: number | null;
+  correlation_coefficient: number | null;
+  option_match_quality: number | null;  // 0-1
+  best_matching_option: string | null;
+  worst_matching_option: string | null;
+  option_differences_json: Record<string, unknown> | null;
+  chi_square_statistic: number | null;
+  chi_square_p_value: number | null;
+  match_quality: MatchQuality | null;   // Generated column
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * ActiveBenchmark - Vista de benchmarks activos con conteo
+ * Vista: active_benchmarks
+ */
+export interface ActiveBenchmark extends SurveyBenchmark {
+  question_count: number;
+  territory_name: string | null;
+}
+
+/**
+ * ValidationRunSummary - Vista de resumen de validaciones
+ * Vista: validation_run_summary
+ */
+export interface ValidationRunSummary extends ValidationRun {
+  survey_name: string;
+  benchmark_name: string;
+  benchmark_source: string;
+  benchmark_wave: string | null;
+  territory_name: string | null;
+  results_count: number;
+  excellent_matches: number;
+  good_matches: number;
+  fair_matches: number;
+  poor_matches: number;
+  critical_matches: number;
+}
+
+/**
+ * ValidationResultDetails - Vista de resultados con contexto
+ * Vista: validation_result_details
+ */
+export interface ValidationResultDetails extends ValidationResult {
+  survey_id: string;
+  benchmark_id: string;
+  engine_version: string;
+  run_status: ValidationRunStatus;
+  benchmark_name: string;
+  benchmark_source: string;
+}
+
+// ============================================================================
 // TIPO DATABASE PARA SUPABASE CLIENT
 // ============================================================================
 
@@ -637,6 +794,26 @@ export interface Database {
         Insert: Omit<SurveyResponse, 'id' | 'created_at'>;
         Update: Partial<SurveyResponse>;
       };
+      survey_benchmarks: {
+        Row: SurveyBenchmark;
+        Insert: Omit<SurveyBenchmark, 'id' | 'created_at' | 'updated_at'>;
+        Update: Partial<SurveyBenchmark>;
+      };
+      benchmark_data_points: {
+        Row: BenchmarkDataPoint;
+        Insert: Omit<BenchmarkDataPoint, 'id' | 'created_at' | 'updated_at'>;
+        Update: Partial<BenchmarkDataPoint>;
+      };
+      validation_runs: {
+        Row: ValidationRun;
+        Insert: Omit<ValidationRun, 'id' | 'created_at' | 'updated_at'>;
+        Update: Partial<ValidationRun>;
+      };
+      validation_results: {
+        Row: ValidationResult;
+        Insert: Omit<ValidationResult, 'id' | 'created_at' | 'updated_at' | 'match_quality'>;
+        Update: Partial<ValidationResult>;
+      };
     };
     Views: {
       agent_summaries: {
@@ -659,6 +836,15 @@ export interface Database {
       };
       survey_results: {
         Row: SurveyResult;
+      };
+      active_benchmarks: {
+        Row: ActiveBenchmark;
+      };
+      validation_run_summary: {
+        Row: ValidationRunSummary;
+      };
+      validation_result_details: {
+        Row: ValidationResultDetails;
       };
     };
     Functions: {
