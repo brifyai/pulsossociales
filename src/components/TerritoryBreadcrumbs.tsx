@@ -1,5 +1,7 @@
+import { useNavigate, useParams } from 'react-router-dom';
 import { useAppStore, getCurrentViewLevel } from '../store/appStore';
-import { getAgentById } from '../mocks/agents';
+import { useRegion } from '../hooks/useTerritories';
+import { useAgentById } from '../hooks/useAgents';
 
 /**
  * TerritoryBreadcrumbs - Navigation breadcrumbs for territory hierarchy
@@ -7,8 +9,8 @@ import { getAgentById } from '../mocks/agents';
  * Architecture:
  * - Shows current position in hierarchy: Chile > Region > Agent
  * - Each level is clickable to navigate up
- * - Uses derived state from store (no duplicate state)
- * - Fetches agent name from mocks using selectedAgentId
+ * - Uses React Router for navigation (real URLs)
+ * - Syncs with URL params and store state
  * 
  * Hierarchy:
  * - Level 1: Chile (country) - always visible, clickable when at region/agent level
@@ -19,15 +21,37 @@ import { getAgentById } from '../mocks/agents';
  * - Clean, minimal breadcrumb style
  * - Chevron separators
  * - Current level highlighted
+ * - Router-based navigation for shareable URLs
  */
 export default function TerritoryBreadcrumbs() {
-  const { selectedRegion, selectedAgentId, isAgentPanelOpen, navigateToCountry, navigateToRegion } = useAppStore();
-  const currentLevel = getCurrentViewLevel({ selectedRegion, isAgentPanelOpen });
+  const navigate = useNavigate();
+  const { regionId, agentId } = useParams<{ regionId: string; agentId: string }>();
+  const { selectedRegion, selectedAgentId, isAgentPanelOpen, navigateToCountry, navigateToRegion, closeAgentPanel } = useAppStore();
   
-  // Fetch agent name from mocks when needed
-  const selectedAgentName = selectedAgentId 
-    ? getAgentById(selectedAgentId)?.profile.name 
-    : null;
+  // Determine current level from URL
+  const currentLevel = agentId ? 'agent' : regionId ? 'region' : 'country';
+  
+  // Fetch region data for display name
+  const { region: urlRegion } = useRegion(regionId || '');
+  const displayRegion = selectedRegion || urlRegion;
+  
+  // Fetch agent data for display name
+  const { agent: urlAgent } = useAgentById(agentId || '');
+  const displayAgentId = selectedAgentId || agentId;
+
+  // Handler: Navigate to country level
+  const handleNavigateToCountry = () => {
+    navigateToCountry();
+    navigate('/');
+  };
+
+  // Handler: Navigate to region level
+  const handleNavigateToRegion = () => {
+    if (displayRegion) {
+      navigateToRegion(displayRegion);
+      navigate(`/region/${displayRegion.id}`);
+    }
+  };
 
   return (
     <nav className="flex items-center gap-2 text-sm">
@@ -36,7 +60,7 @@ export default function TerritoryBreadcrumbs() {
         label="Chile"
         isActive={currentLevel === 'country'}
         isClickable={currentLevel !== 'country'}
-        onClick={currentLevel !== 'country' ? navigateToCountry : undefined}
+        onClick={currentLevel !== 'country' ? handleNavigateToCountry : undefined}
       />
 
       {/* Separator */}
@@ -45,12 +69,12 @@ export default function TerritoryBreadcrumbs() {
       )}
 
       {/* Level 2: Region */}
-      {currentLevel !== 'country' && selectedRegion && (
+      {currentLevel !== 'country' && displayRegion && (
         <BreadcrumbItem
-          label={selectedRegion.shortName}
+          label={displayRegion.shortName}
           isActive={currentLevel === 'region'}
           isClickable={currentLevel === 'agent'}
-          onClick={currentLevel === 'agent' ? () => navigateToRegion(selectedRegion) : undefined}
+          onClick={currentLevel === 'agent' ? handleNavigateToRegion : undefined}
         />
       )}
 
@@ -60,9 +84,9 @@ export default function TerritoryBreadcrumbs() {
       )}
 
       {/* Level 3: Agent */}
-      {currentLevel === 'agent' && selectedAgentName && (
+      {currentLevel === 'agent' && displayAgentId && (
         <BreadcrumbItem
-          label={selectedAgentName}
+          label="Agente"
           isActive={true}
           isClickable={false}
         />

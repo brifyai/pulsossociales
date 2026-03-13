@@ -1,4 +1,5 @@
-import MapRoot from './components/MapRoot';
+import { RouterProvider } from 'react-router-dom';
+import { router } from './routes';
 import { ToastContainer } from 'react-toastify';
 import starImg from '/assets/star.svg';
 import helpImg from '/assets/help.svg';
@@ -14,35 +15,36 @@ import { MAX_HUMAN_PLAYERS } from '../convex/constants.ts';
  * App - Main entry point for Pulso Social (formerly AI Town)
  * 
  * Architecture:
- * - MapRoot: Handles 3-level navigation (country → region → agent)
+ * - React Router handles navigation with real URLs
+ * - Routes defined in src/routes/index.tsx
+ * - Store syncs with URL for state persistence
  * - Footer: Original AI Town controls (preserved for compatibility)
  * - Modal: Help dialog
  * 
  * Layout:
- * - Full-screen MapRoot with its own internal header
+ * - RouterProvider wraps the entire app
  * - Fixed footer overlay for game controls
  * - Modal overlays everything when open
  * 
- * 3-Level Navigation (handled by MapRoot):
- * 1. Country: ChileMapView - Map of Chile with clickable regions
- * 2. Region: RegionSceneView - AI Town world for selected region
- * 3. Agent: AgentInspectorPanel - Overlay panel on top of region view
+ * 3-Level Navigation (handled by React Router):
+ * 1. Country (/): ChileMapView - Map of Chile with clickable regions
+ * 2. Region (/region/:regionId): RegionSceneView - AI Town world for selected region
+ * 3. Agent (/region/:regionId/agent/:agentId): AgentInspectorPanel - Overlay panel on top of region view
  */
-export default function Home() {
+export default function App() {
   const [helpModalOpen, setHelpModalOpen] = useState(false);
   
   return (
     <div className="relative min-h-screen font-body game-background overflow-hidden">
       {/* 
-        MapRoot - Main application shell
-        Handles all 3-level navigation internally
-        Takes full viewport height
+        RouterProvider - Main application router
+        Handles all navigation with real URLs
       */}
-      <MapRoot />
+      <RouterProvider router={router} />
 
       {/* 
         Footer - Original AI Town controls
-        Fixed at bottom, overlays MapRoot
+        Fixed at bottom, overlays the router content
         Preserved for backward compatibility
       */}
       <footer className="fixed bottom-0 left-0 right-0 flex items-center gap-3 p-4 flex-wrap pointer-events-none z-50 bg-gradient-to-t from-black/50 to-transparent">
@@ -78,9 +80,18 @@ export default function Home() {
             La aplicación tiene 3 niveles de navegación:
           </p>
           <ul className="list-disc ml-6 mt-2 space-y-1">
-            <li><strong>Nivel País:</strong> Mapa de Chile con todas las regiones. Haz click en una región para explorarla.</li>
-            <li><strong>Nivel Región:</strong> Vista del mundo AI Town para la región seleccionada. Observa a los agentes interactuar.</li>
-            <li><strong>Nivel Agente:</strong> Panel de inspección detallada de un agente específico. Se abre como panel lateral.</li>
+            <li><strong>Nivel País (/):</strong> Mapa de Chile con todas las regiones. Haz click en una región para explorarla.</li>
+            <li><strong>Nivel Región (/region/:regionId):</strong> Vista del mundo AI Town para la región seleccionada. Observa a los agentes interactuar.</li>
+            <li><strong>Nivel Agente (/region/:regionId/agent/:agentId):</strong> Panel de inspección detallada de un agente específico. Se abre como panel lateral.</li>
+          </ul>
+          <h2 className="text-4xl mt-6">URLs Compartibles</h2>
+          <p className="mt-2">
+            Ahora puedes compartir enlaces directos:
+          </p>
+          <ul className="list-disc ml-6 mt-2 space-y-1">
+            <li><code>/</code> - Vista país completa</li>
+            <li><code>/region/metropolitana</code> - Región específica</li>
+            <li><code>/region/metropolitana/agent/agent-123</code> - Agente específico</li>
           </ul>
           <h2 className="text-4xl mt-6">Interactividad</h2>
           <p className="mt-2">
