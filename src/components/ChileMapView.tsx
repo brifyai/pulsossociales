@@ -1,7 +1,9 @@
 import { TerritoryRegion, MapLayer, LAYER_CONFIGS, getScoreOpacity, MacroZone } from '../types/territory';
 import { useAppStore } from '../store/appStore';
 import { useTerritories, useTerritoriesWithEvents } from '../hooks/useTerritories';
-import { useState, useMemo } from 'react';
+import { useAgentCountByRegion } from '../hooks/useAgents';
+import { useEventsByTerritory } from '../hooks/useEvents';
+import { useState, useMemo, useCallback } from 'react';
 
 /**
  * ChileMapView - Premium country-level strategic map
@@ -181,6 +183,16 @@ export default function ChileMapView({ onRegionSelect }: ChileMapViewProps) {
           y={tooltip.y}
         />
       )}
+      
+      {/* Guide Text - Bottom overlay */}
+      <div className="absolute bottom-6 left-0 right-0 z-30 flex items-center justify-center pointer-events-none">
+        <div className="bg-slate-800/80 backdrop-blur-md rounded-full px-6 py-3 border border-white/10 shadow-xl">
+          <p className="text-sm text-white/70 flex items-center gap-2">
+            <span className="text-lg">👆</span>
+            <span>Haz click en una región para explorar <span className="text-white font-medium">agentes</span>, <span className="text-white font-medium">eventos</span> y <span className="text-white font-medium">estudios</span></span>
+          </p>
+        </div>
+      </div>
     </div>
   );
 }
@@ -223,7 +235,13 @@ function MacrozoneBand({ zone, config, regions }: MacrozoneBandProps) {
 }
 
 /**
- * RegionMarker - Enhanced individual region marker
+ * RegionMarker - Enhanced individual region marker with clear affordance
+ * 
+ * Features:
+ * - Clear cursor pointer on hover
+ * - Visual feedback on click (scale down briefly)
+ * - Enhanced glow effect
+ * - Always visible labels with better contrast
  */
 interface RegionMarkerProps {
   region: TerritoryRegion;
@@ -244,12 +262,12 @@ function RegionMarker({
   onTooltip,
   onClick 
 }: RegionMarkerProps) {
+  const [isPressed, setIsPressed] = useState(false);
   const score = region[layerScoreField[activeLayer]] as number;
   const opacity = getScoreOpacity(score);
   const layerConfig = LAYER_CONFIGS[activeLayer];
 
   // Calculate position - optimized for Chile's vertical shape
-  // y ranges from 0-185, we map to percentage
   const left = `${region.x}%`;
   const top = `${(region.y / 185) * 100}%`;
   
@@ -257,9 +275,15 @@ function RegionMarker({
   const baseSize = region.radius * 10;
   const size = isHovered ? baseSize * 1.3 : baseSize;
 
+  const handleClick = () => {
+    setIsPressed(true);
+    setTimeout(() => setIsPressed(false), 150);
+    onClick();
+  };
+
   return (
     <div
-      className="absolute"
+      className="absolute cursor-pointer group"
       style={{
         left,
         top,
@@ -276,63 +300,101 @@ function RegionMarker({
       }}
       onMouseMove={(e) => onTooltip(region, e.clientX, e.clientY)}
     >
-      {/* Outer glow for selected/hovered */}
-      {(isHovered || isSelected) && (
-        <div 
-          className={`absolute rounded-full animate-pulse ${layerConfig.color} opacity-30`}
-          style={{
-            width: size * 1.5,
-            height: size * 1.5,
-            left: '50%',
-            top: '50%',
-            transform: 'translate(-50%, -50%)',
-          }}
-        />
-      )}
-      
-      {/* Main marker */}
-      <button
-        onClick={onClick}
+      {/* Outer glow ring - enhanced on hover */}
+      <div 
         className={`
-          relative rounded-full 
-          transition-all duration-300 ease-out
+          absolute rounded-full transition-all duration-300
+          ${isHovered || isSelected ? `${layerConfig.color} opacity-40 animate-pulse` : 'opacity-0'}
+        `}
+        style={{
+          width: isHovered ? size * 2 : size * 1.5,
+          height: isHovered ? size * 2 : size * 1.5,
+          left: '50%',
+          top: '50%',
+          transform: 'translate(-50%, -50%)',
+        }}
+      />
+      
+      {/* Secondary glow ring */}
+      <div 
+        className={`
+          absolute rounded-full transition-all duration-300
+          ${isHovered ? 'bg-white/10 opacity-100' : 'opacity-0'}
+        `}
+        style={{
+          width: size * 2.5,
+          height: size * 2.5,
+          left: '50%',
+          top: '50%',
+          transform: 'translate(-50%, -50%)',
+        }}
+      />
+      
+      {/* Main marker button */}
+      <button
+        onClick={handleClick}
+        className={`
+          relative rounded-full cursor-pointer
+          transition-all duration-150 ease-out
           focus:outline-none focus:ring-2 focus:ring-white/50
           ${layerConfig.color}
           ${opacity}
-          ${isHovered ? 'scale-110 shadow-lg shadow-white/20' : ''}
+          ${isHovered ? 'scale-110 shadow-lg shadow-white/30' : 'hover:scale-105'}
+          ${isPressed ? 'scale-95' : ''}
           ${isSelected ? 'ring-2 ring-white ring-offset-2 ring-offset-slate-900' : ''}
         `}
         style={{
           width: size,
           height: size,
         }}
+        aria-label={`Explorar ${region.name}`}
       >
         {/* Inner highlight */}
-        <div className="absolute inset-0 rounded-full bg-gradient-to-br from-white/30 to-transparent" />
+        <div className="absolute inset-0 rounded-full bg-gradient-to-br from-white/40 to-transparent" />
+        
+        {/* Click ripple effect */}
+        {isPressed && (
+          <span className="absolute inset-0 rounded-full bg-white/50 animate-ping" />
+        )}
         
         {/* Pulse for high activity */}
         {score >= 80 && !isHovered && (
-          <span className="absolute inset-0 rounded-full animate-ping opacity-20 bg-white" />
+          <span className="absolute inset-0 rounded-full animate-ping opacity-30 bg-white" />
         )}
       </button>
       
-      {/* Label - always visible for larger regions, on hover for smaller */}
+      {/* Label - always visible with better styling */}
       <div 
         className={`
-          absolute left-1/2 -translate-x-1/2 mt-1
-          transition-all duration-200
-          ${isHovered || region.radius >= 4 ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-1'}
+          absolute left-1/2 -translate-x-1/2 mt-2
+          transition-all duration-200 pointer-events-none
+          ${isHovered ? 'opacity-100 translate-y-0' : 'opacity-80 translate-y-0'}
         `}
         style={{ top: size / 2 }}
       >
         <span className={`
-          text-xs font-medium whitespace-nowrap
-          ${isHovered ? 'text-white' : 'text-white/70'}
-          drop-shadow-lg
+          text-xs font-semibold whitespace-nowrap px-2 py-0.5 rounded-full
+          ${isHovered 
+            ? 'text-white bg-slate-900/80 shadow-lg' 
+            : 'text-white/90 bg-slate-900/60'}
+          backdrop-blur-sm
+          transition-all duration-200
         `}>
           {region.shortName}
         </span>
       </div>
+      
+      {/* Click hint on hover */}
+      {isHovered && (
+        <div 
+          className="absolute left-1/2 -translate-x-1/2 -mt-6 pointer-events-none"
+          style={{ top: -size / 2 }}
+        >
+          <span className="text-[10px] text-white/60 bg-slate-900/80 px-2 py-0.5 rounded-full whitespace-nowrap backdrop-blur-sm">
+            Click para explorar
+          </span>
+        </div>
+      )}
     </div>
   );
 }

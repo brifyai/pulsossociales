@@ -1,6 +1,7 @@
 import { useAppStore, getCurrentViewLevel } from '../store/appStore';
 import { TerritoryRegion } from '../types/territory';
 import { useAgentById } from '../hooks/useAgents';
+import { useState, useEffect } from 'react';
 import ChileMapView from './ChileMapView';
 import RegionSceneView from './RegionSceneView';
 import AgentInspectorPanel from './AgentInspectorPanel';
@@ -35,10 +36,13 @@ export default function MapRoot() {
     selectedRegion, 
     selectedAgentId, 
     isAgentPanelOpen,
+    isNavigating,
+    navigationTarget,
     navigateToCountry,
     navigateToRegion,
     selectAgent,
     closeAgentPanel,
+    setIsNavigating,
   } = useAppStore();
   
   // Derive current view level from state
@@ -52,9 +56,16 @@ export default function MapRoot() {
     navigateToCountry();
   };
 
-  // Handler: Navigate to region level
+  // Handler: Navigate to region level with transition
   const handleNavigateToRegion = (region: TerritoryRegion) => {
-    navigateToRegion(region);
+    // Start navigation transition
+    setIsNavigating(true, region);
+    
+    // Simulate a brief transition delay for better UX
+    setTimeout(() => {
+      navigateToRegion(region);
+      setIsNavigating(false, null);
+    }, 400);
   };
 
   // Handler: Select agent by ID
@@ -77,8 +88,38 @@ export default function MapRoot() {
 
       {/* Main Content Area */}
       <main className="flex-1 relative overflow-hidden">
+        {/* Navigation Transition Overlay */}
+        {isNavigating && navigationTarget && (
+          <div className="absolute inset-0 bg-slate-900 z-50 flex items-center justify-center">
+            <div className="text-center">
+              {/* Region icon */}
+              <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-amber-500/20 to-amber-600/10 border border-amber-500/30 flex items-center justify-center text-4xl mb-6 mx-auto animate-pulse">
+                🏘️
+              </div>
+              
+              {/* Loading spinner */}
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-400 mx-auto mb-4" />
+              
+              {/* Transition message */}
+              <h3 className="text-xl font-semibold text-white mb-2">
+                Entrando a {navigationTarget.name}
+              </h3>
+              <p className="text-sm text-white/50">
+                Cargando agentes, eventos y estudios...
+              </p>
+              
+              {/* Progress dots */}
+              <div className="flex items-center justify-center gap-2 mt-6">
+                <span className="w-2 h-2 rounded-full bg-amber-400 animate-bounce" style={{ animationDelay: '0ms' }} />
+                <span className="w-2 h-2 rounded-full bg-amber-400 animate-bounce" style={{ animationDelay: '150ms' }} />
+                <span className="w-2 h-2 rounded-full bg-amber-400 animate-bounce" style={{ animationDelay: '300ms' }} />
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Level 1: Country View - shown when no region selected */}
-        {currentViewLevel === 'country' && (
+        {currentViewLevel === 'country' && !isNavigating && (
           <ChileMapView 
             onRegionSelect={handleNavigateToRegion}
           />
@@ -86,7 +127,7 @@ export default function MapRoot() {
 
         {/* Level 2 & 3: Region View - shown when region selected */}
         {/* Agent panel opens as overlay, region stays visible underneath */}
-        {(currentViewLevel === 'region' || currentViewLevel === 'agent') && selectedRegion && (
+        {(currentViewLevel === 'region' || currentViewLevel === 'agent') && selectedRegion && !isNavigating && (
           <RegionSceneView 
             region={selectedRegion}
             onAgentSelect={handleSelectAgent}

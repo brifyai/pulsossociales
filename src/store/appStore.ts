@@ -20,7 +20,7 @@ export type {
  * 
  * Responsibilities:
  * - Navigation state (selected region, agent panel visibility)
- * - UI state (active map layer)
+ * - UI state (active map layer, transition states)
  * - Selection state (single source of truth)
  * 
  * Non-responsibilities:
@@ -45,6 +45,10 @@ interface AppState {
   // === UI State ===
   /** Active visualization layer for country map */
   activeLayer: MapLayer;
+  /** Whether a navigation transition is in progress */
+  isNavigating: boolean;
+  /** Target region during navigation (for loading state) */
+  navigationTarget: TerritoryRegion | null;
 
   // === Actions ===
   /** Navigate to country level (clear all selections) */
@@ -57,6 +61,8 @@ interface AppState {
   closeAgentPanel: () => void;
   /** Set active map layer */
   setActiveLayer: (layer: MapLayer) => void;
+  /** Set navigation state */
+  setIsNavigating: (isNavigating: boolean, target?: TerritoryRegion | null) => void;
 }
 
 /**
@@ -74,18 +80,24 @@ export const useAppStore = create<AppState>((set) => ({
   selectedAgentId: null,
   isAgentPanelOpen: false,
   activeLayer: 'population',
+  isNavigating: false,
+  navigationTarget: null,
 
   // === Actions ===
   navigateToCountry: () => set({
     selectedRegion: null,
     selectedAgentId: null,
     isAgentPanelOpen: false,
+    isNavigating: false,
+    navigationTarget: null,
   }),
 
   navigateToRegion: (region: TerritoryRegion) => set({
     selectedRegion: region,
     selectedAgentId: null,
     isAgentPanelOpen: false,
+    isNavigating: false,
+    navigationTarget: null,
   }),
 
   selectAgent: (agentId: string | null) => set({
@@ -99,6 +111,11 @@ export const useAppStore = create<AppState>((set) => ({
   }),
 
   setActiveLayer: (layer: MapLayer) => set({ activeLayer: layer }),
+  
+  setIsNavigating: (isNavigating: boolean, target?: TerritoryRegion | null) => set({
+    isNavigating,
+    navigationTarget: target ?? null,
+  }),
 }));
 
 /**
