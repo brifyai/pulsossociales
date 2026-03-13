@@ -86,7 +86,7 @@ export default function ChileMapView({ onRegionSelect }: ChileMapViewProps) {
 
   return (
     <div className="relative w-full h-full bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 overflow-hidden">
-      {/* Premium Header */}
+      {/* Premium Header - Now part of top panel */}
       <div className="absolute top-0 left-0 right-0 z-20 px-6 py-5">
         <div className="flex items-start justify-between">
           <div>
@@ -114,53 +114,61 @@ export default function ChileMapView({ onRegionSelect }: ChileMapViewProps) {
         </div>
       </div>
 
-      {/* Map Container */}
-      <div className="relative w-full h-full pt-24 pb-32 px-4">
-        {/* Chile Shape Container - optimized for vertical layout */}
-        <div className="relative w-full h-full max-w-3xl mx-auto">
-          
-          {/* Macrozone Background Bands */}
-          {Object.entries(MACROZONE_CONFIG).map(([zone, config]) => (
-            <MacrozoneBand
-              key={zone}
-              zone={zone as MacroZone}
-              config={config}
-              regions={regionsByZone[zone as MacroZone]}
-            />
-          ))}
-
-          {/* Subtle Grid Pattern */}
-          <div 
-            className="absolute inset-0 opacity-[0.03] pointer-events-none"
-            style={{
-              backgroundImage: `
-                linear-gradient(to right, white 1px, transparent 1px),
-                linear-gradient(to bottom, white 1px, transparent 1px)
-              `,
-              backgroundSize: '40px 40px',
-            }}
-          />
-
-          {/* Region Markers */}
-          <div className="relative w-full h-full">
-            {regions.map((region) => (
-              <RegionMarker
-                key={region.id}
-                region={region}
-                activeLayer={activeLayer}
-                isHovered={hoveredRegion === region.id}
-                isSelected={false}
-                onHover={(isHovered) => {
-                  setHoveredRegion(isHovered ? region.id : null);
-                }}
-                onTooltip={(region, x, y) => setTooltip(region ? { region, x, y } : null)}
-                onClick={() => onRegionSelect(region)}
+      {/* Main Content Area - Split Layout */}
+      <div className="flex w-full h-full pt-20">
+        {/* Left Side: Map Area (takes most space) */}
+        <div className="flex-1 h-full px-4 pb-4">
+          {/* Chile Shape Container - optimized for vertical layout */}
+          <div className="relative w-full h-full max-w-3xl mx-auto">
+            
+            {/* Macrozone Background Bands */}
+            {Object.entries(MACROZONE_CONFIG).map(([zone, config]) => (
+              <MacrozoneBand
+                key={zone}
+                zone={zone as MacroZone}
+                config={config}
+                regions={regionsByZone[zone as MacroZone]}
               />
             ))}
-          </div>
 
-          {/* Legend - positioned to not overlap with southern regions */}
+            {/* Subtle Grid Pattern */}
+            <div 
+              className="absolute inset-0 opacity-[0.03] pointer-events-none"
+              style={{
+                backgroundImage: `
+                  linear-gradient(to right, white 1px, transparent 1px),
+                  linear-gradient(to bottom, white 1px, transparent 1px)
+                `,
+                backgroundSize: '40px 40px',
+              }}
+            />
+
+            {/* Region Markers - Clean, no overlays */}
+            <div className="relative w-full h-full">
+              {regions.map((region) => (
+                <RegionMarker
+                  key={region.id}
+                  region={region}
+                  activeLayer={activeLayer}
+                  isHovered={hoveredRegion === region.id}
+                  isSelected={false}
+                  onHover={(isHovered) => {
+                    setHoveredRegion(isHovered ? region.id : null);
+                  }}
+                  onTooltip={(region, x, y) => setTooltip(region ? { region, x, y } : null)}
+                  onClick={() => onRegionSelect(region)}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Right Side: Context Panel (separate from map) */}
+        <div className="w-72 h-full p-4 flex flex-col gap-4">
+          {/* Legend Panel */}
           <MapLegend activeLayer={activeLayer} />
+          
+          {/* Additional context can go here */}
         </div>
       </div>
 
@@ -385,7 +393,7 @@ function RegionTooltip({ region, activeLayer, x, y }: RegionTooltipProps) {
 
 /**
  * MapLegend - Enhanced legend for the current layer
- * Positioned in top-left to avoid overlapping with southern regions
+ * Now positioned in a side panel, not floating over the map
  */
 interface MapLegendProps {
   activeLayer: MapLayer;
@@ -395,7 +403,7 @@ function MapLegend({ activeLayer }: MapLegendProps) {
   const layerConfig = LAYER_CONFIGS[activeLayer];
   
   return (
-    <div className="absolute top-4 left-4 bg-slate-800/90 backdrop-blur-md rounded-xl p-4 border border-white/10 shadow-xl max-w-[200px]">
+    <div className="bg-slate-800/90 backdrop-blur-md rounded-xl p-4 border border-white/10 shadow-xl">
       <div className="flex items-center gap-3 mb-3">
         <div className={`w-10 h-10 rounded-lg ${layerConfig.color} opacity-80 flex items-center justify-center text-xl`}>
           {layerConfig.icon}
