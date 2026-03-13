@@ -41,8 +41,11 @@ function CountryView() {
   const { navigateToRegion } = useAppStore();
 
   const handleRegionSelect = (region: TerritoryRegion) => {
+    console.log('[CountryView] Region selected:', region.id, region.name);
     navigateToRegion(region);
-    navigate(`/region/${region.id}`);
+    const url = `/region/${region.id}`;
+    console.log('[CountryView] Navigating to:', url);
+    navigate(url);
   };
 
   return <ChileMapView onRegionSelect={handleRegionSelect} />;
