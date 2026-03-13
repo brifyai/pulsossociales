@@ -8,8 +8,7 @@ import { useRegion } from '../hooks/useTerritories';
 import ChileMapView from '../components/ChileMapView';
 import RegionSceneView from '../components/RegionSceneView';
 import AgentInspectorPanel from '../components/AgentInspectorPanel';
-import TerritoryBreadcrumbs from '../components/TerritoryBreadcrumbs';
-import MapLayerSwitcher from '../components/MapLayerSwitcher';
+import { MapToolbar } from '../components/MapToolbar';
 import { MainNavigation } from '../components/MainNavigation';
 import { useAgentById } from '../hooks/useAgents';
 import { TerritoryRegion } from '../types/territory';
@@ -128,27 +127,37 @@ const modalStyles = {
 /**
  * AppLayout - Common layout wrapper for all routes
  * 
- * Provides the common shell: header with breadcrumbs, layer switcher, and footer
+ * Jerarquía de navegación:
+ * 1. MainNavigation - Barra principal del producto (siempre visible)
+ * 2. MapToolbar - Barra contextual del mapa (solo en vistas de mapa)
+ * 
+ * Esto establece claramente:
+ * - MainNavigation = Navegación GLOBAL entre módulos
+ * - MapToolbar = Contexto LOCAL del mapa (breadcrumb + capas)
  */
 function AppLayout() {
   const [helpModalOpen, setHelpModalOpen] = useState(false);
   const location = useLocation();
-  const isSurveyPage = location.pathname === '/surveys' || 
-                       location.pathname === '/results' || 
-                       location.pathname === '/validation';
+  
+  // Determinar si estamos en una página de mapa (vs módulos de encuestas)
+  const isMapPage = location.pathname === '/' || 
+                    location.pathname.startsWith('/region');
   
   return (
-    <div className="relative w-full h-screen flex flex-col bg-brown-900">
-      {/* Main Navigation - visible on all pages */}
+    <div className="relative w-full h-screen flex flex-col bg-slate-900">
+      {/* 
+        NIVEL 1: MainNavigation 
+        Navegación principal del producto - siempre visible
+        Módulos: Mapa, Encuestas, Resultados, Validación
+      */}
       <MainNavigation />
       
-      {/* Common Header - always visible (except on survey pages where we use our own header) */}
-      {!isSurveyPage && (
-        <header className="flex items-center justify-between px-4 py-3 bg-brown-800 border-b border-brown-700 z-50">
-          <TerritoryBreadcrumbs />
-          <MapLayerSwitcher />
-        </header>
-      )}
+      {/* 
+        NIVEL 2: MapToolbar (solo en páginas de mapa)
+        Barra contextual secundaria - más ligera
+        Proporciona: breadcrumb de ubicación + selector de capas
+      */}
+      {isMapPage && <MapToolbar />}
 
       {/* Main Content Area */}
       <main className="flex-1 relative overflow-hidden">

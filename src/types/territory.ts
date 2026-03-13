@@ -120,12 +120,17 @@ export interface LayerConfig {
 /**
  * Predefined layer configurations
  * Centralizes visual and behavioral settings for each layer
+ * 
+ * NOTA: Los labels de capas están diseñados para diferenciarse de los módulos del producto:
+ * - "Cobertura" (capa) vs "Encuestas" (módulo de gestión)
+ * - "Respuestas" (capa) vs "Resultados" (módulo de análisis)
+ * Esto evita confusión entre capas de visualización del mapa y funcionalidades del producto.
  */
 export const LAYER_CONFIGS: Record<MapLayer, LayerConfig> = {
   population: {
     id: 'population',
     label: 'Población',
-    shortLabel: 'Pob.',
+    shortLabel: 'Población',
     icon: '👥',
     color: 'bg-green-500',
     hoverColor: 'hover:bg-green-400',
@@ -135,7 +140,7 @@ export const LAYER_CONFIGS: Record<MapLayer, LayerConfig> = {
   events: {
     id: 'events',
     label: 'Eventos',
-    shortLabel: 'Evt.',
+    shortLabel: 'Eventos',
     icon: '📅',
     color: 'bg-pink-500',
     hoverColor: 'hover:bg-pink-400',
@@ -144,22 +149,22 @@ export const LAYER_CONFIGS: Record<MapLayer, LayerConfig> = {
   },
   survey: {
     id: 'survey',
-    label: 'Encuestas',
-    shortLabel: 'Enc.',
+    label: 'Cobertura de Encuestas',
+    shortLabel: 'Cobertura',
     icon: '📊',
     color: 'bg-blue-500',
     hoverColor: 'hover:bg-blue-400',
-    description: 'Encuestas activas por región',
+    description: 'Cobertura de encuestas activas por región (visualización)',
     dataField: 'surveyScore',
   },
   results: {
     id: 'results',
-    label: 'Resultados',
-    shortLabel: 'Res.',
+    label: 'Respuestas',
+    shortLabel: 'Respuestas',
     icon: '📈',
     color: 'bg-amber-500',
     hoverColor: 'hover:bg-amber-400',
-    description: 'Resultados de encuestas completadas',
+    description: 'Respuestas recopiladas por región (visualización)',
     dataField: 'resultScore',
   },
 };

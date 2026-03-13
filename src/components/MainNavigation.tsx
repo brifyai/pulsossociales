@@ -1,14 +1,20 @@
 /**
  * MainNavigation Component
  *
- * Navigation principal visible para toda la aplicación.
- * Expone claramente los módulos principales: Mapa, Encuestas, Resultados, Validación.
+ * NAVEGACIÓN PRINCIPAL DEL PRODUCTO
+ * ================================
+ * Esta es la navegación global de la aplicación.
+ * Permite acceder a los 4 módulos principales: Mapa, Encuestas, Resultados, Validación.
  *
- * Design:
- * - Tabs visibles en la parte superior
- * - Estilo consistente con el diseño del juego
- * - Indicador de sección activa
- * - Responsive y accesible
+ * Jerarquía visual:
+ * - Barra superior dominante con fondo oscuro sólido
+ * - Altura prominente (h-16) para establecer autoridad visual
+ * - Logo "Pulso Social" como marca principal
+ * - Tabs con indicador claro de sección activa
+ *
+ * NOTA: Esta navegación es GLOBAL y diferente de la toolbar contextual del mapa.
+ * - MainNavigation = Módulos del producto (navegación entre páginas)
+ * - MapToolbar = Contexto del mapa (breadcrumb + capas de visualización)
  */
 
 import { NavLink, useLocation } from 'react-router-dom';
@@ -28,35 +34,39 @@ const NAV_ITEMS: NavItem[] = [
     label: 'Mapa',
     path: '/',
     icon: '🗺️',
-    description: 'Explora regiones y agentes',
+    description: 'Explora regiones y agentes de Chile',
   },
   {
     id: 'surveys',
     label: 'Encuestas',
     path: '/surveys',
     icon: '📋',
-    description: 'Gestiona y ejecuta encuestas',
+    description: 'Gestiona y ejecuta encuestas sintéticas',
   },
   {
     id: 'results',
     label: 'Resultados',
     path: '/results',
     icon: '📊',
-    description: 'Visualiza resultados agregados',
+    description: 'Analiza resultados agregados',
   },
   {
     id: 'validation',
     label: 'Validación',
     path: '/validation',
     icon: '✅',
-    description: 'Valida calidad de datos',
+    description: 'Valida calidad de datos y encuestas',
   },
 ];
 
 /**
- * MainNavigation - Barra de navegación principal
+ * MainNavigation - Barra de navegación principal del producto
  *
- * Visible desde el inicio de la app, permite acceder a todos los módulos.
+ * Características:
+ * - Fondo sólido oscuro (bg-slate-900) para máximo contraste
+ * - Altura prominente (h-16) para establecer jerarquía
+ * - Sombra sutil para separación del contenido
+ * - Indicador de sección activa con estilo ámbar
  */
 export function MainNavigation() {
   const location = useLocation();
@@ -71,21 +81,26 @@ export function MainNavigation() {
   };
 
   return (
-    <nav className="bg-slate-800 border-b border-slate-700">
+    <nav className="bg-slate-900 border-b-2 border-slate-700 shadow-lg shadow-black/20">
       <div className="max-w-7xl mx-auto px-4">
-        <div className="flex items-center justify-between h-14">
-          {/* Logo / Brand */}
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center text-lg shadow-lg">
+        <div className="flex items-center justify-between h-16">
+          {/* Logo / Brand - Más prominente */}
+          <NavLink to="/" className="flex items-center gap-3 group">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center text-xl shadow-lg shadow-amber-500/20 group-hover:shadow-amber-500/40 transition-shadow">
               🏘️
             </div>
-            <span className="font-semibold text-white text-lg hidden sm:block">
-              Pulso Social
-            </span>
-          </div>
+            <div className="hidden sm:block">
+              <span className="font-bold text-white text-xl tracking-tight">
+                Pulso Social
+              </span>
+              <span className="text-xs text-slate-500 ml-2 hidden lg:inline">
+                Encuestas Sintéticas
+              </span>
+            </div>
+          </NavLink>
 
-          {/* Navigation Tabs */}
-          <div className="flex items-center gap-1">
+          {/* Navigation Tabs - Más prominentes */}
+          <div className="flex items-center gap-2">
             {NAV_ITEMS.map((item) => {
               const active = isActive(item.path);
               const isHovered = hoveredItem === item.id;
@@ -95,24 +110,25 @@ export function MainNavigation() {
                   key={item.id}
                   to={item.path}
                   className={`
-                    relative px-4 py-2 rounded-lg transition-all duration-200
+                    relative px-5 py-2.5 rounded-xl transition-all duration-200
                     flex items-center gap-2
                     ${active 
-                      ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' 
-                      : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
+                      ? 'bg-amber-500 text-slate-900 font-semibold shadow-lg shadow-amber-500/25' 
+                      : 'text-slate-400 hover:text-white hover:bg-slate-800'
                     }
                   `}
                   onMouseEnter={() => setHoveredItem(item.id)}
                   onMouseLeave={() => setHoveredItem(null)}
+                  title={item.description}
                 >
-                  <span className="text-lg">{item.icon}</span>
-                  <span className="font-medium text-sm hidden md:block">{item.label}</span>
+                  <span className="text-xl">{item.icon}</span>
+                  <span className="font-medium hidden md:block">{item.label}</span>
                   
                   {/* Tooltip on hover */}
                   {isHovered && !active && (
-                    <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-3 py-1.5 bg-slate-900 text-white text-xs rounded-lg shadow-xl border border-slate-700 whitespace-nowrap z-50">
+                    <div className="absolute top-full left-1/2 -translate-x-1/2 mt-3 px-4 py-2 bg-slate-800 text-white text-sm rounded-xl shadow-2xl border border-slate-600 whitespace-nowrap z-50">
                       {item.description}
-                      <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-slate-900 border-l border-t border-slate-700 rotate-45" />
+                      <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-slate-800 border-l border-t border-slate-600 rotate-45" />
                     </div>
                   )}
                 </NavLink>
@@ -120,12 +136,12 @@ export function MainNavigation() {
             })}
           </div>
 
-          {/* Help Button */}
+          {/* Help Button - Más sutil */}
           <button
-            className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700/50 transition-colors"
-            title="Ayuda"
+            className="p-2.5 rounded-xl text-slate-500 hover:text-white hover:bg-slate-800 transition-colors"
+            title="Ayuda y documentación"
           >
-            <span className="text-lg">❓</span>
+            <span className="text-xl">❓</span>
           </button>
         </div>
       </div>
