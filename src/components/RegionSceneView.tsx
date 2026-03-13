@@ -4,6 +4,7 @@ import { AgentSummary } from '../types/agent';
 import { useAgentSummariesByRegion } from '../hooks/useAgents';
 import { useEventsByTerritory } from '../hooks/useEvents';
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 /**
  * RegionSceneView - Premium local scene view for a specific region
@@ -34,6 +35,7 @@ interface RegionSceneViewProps {
  * The game world is centered and immersive, using available space efficiently.
  */
 export default function RegionSceneView({ region, onAgentSelect }: RegionSceneViewProps) {
+  const navigate = useNavigate();
   const { agents, loading: agentsLoading, error: agentsError } = useAgentSummariesByRegion(region.id);
   const { events, loading: eventsLoading, error: eventsError } = useEventsByTerritory(region.id);
   const [showAllAgents, setShowAllAgents] = useState(false);
@@ -111,6 +113,16 @@ export default function RegionSceneView({ region, onAgentSelect }: RegionSceneVi
                   <span className="text-xs text-pink-300">{events.length} eventos</span>
                 </div>
               )}
+              
+              {/* Survey Access Button */}
+              <button
+                onClick={() => navigate('/surveys')}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/30 text-amber-300 transition-all duration-200"
+                title="Gestionar encuestas"
+              >
+                <span className="text-sm">📋</span>
+                <span className="text-xs font-medium hidden sm:inline">Encuestas</span>
+              </button>
             </div>
           </div>
         </div>

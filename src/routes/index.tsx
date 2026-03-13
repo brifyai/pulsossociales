@@ -1,4 +1,7 @@
 import { createBrowserRouter, Navigate, Outlet, useParams, useNavigate, useLocation } from 'react-router-dom';
+import { SurveysPage } from '../components/SurveysPage';
+import { ResultsPage } from '../components/ResultsPage';
+import { ValidationPage } from '../components/ValidationPage';
 import { useEffect, useState } from 'react';
 import { useAppStore } from '../store/appStore';
 import { useRegion } from '../hooks/useTerritories';
@@ -7,6 +10,7 @@ import RegionSceneView from '../components/RegionSceneView';
 import AgentInspectorPanel from '../components/AgentInspectorPanel';
 import TerritoryBreadcrumbs from '../components/TerritoryBreadcrumbs';
 import MapLayerSwitcher from '../components/MapLayerSwitcher';
+import { MainNavigation } from '../components/MainNavigation';
 import { useAgentById } from '../hooks/useAgents';
 import { TerritoryRegion } from '../types/territory';
 import { ToastContainer } from 'react-toastify';
@@ -128,14 +132,23 @@ const modalStyles = {
  */
 function AppLayout() {
   const [helpModalOpen, setHelpModalOpen] = useState(false);
+  const location = useLocation();
+  const isSurveyPage = location.pathname === '/surveys' || 
+                       location.pathname === '/results' || 
+                       location.pathname === '/validation';
   
   return (
     <div className="relative w-full h-screen flex flex-col bg-brown-900">
-      {/* Common Header - always visible */}
-      <header className="flex items-center justify-between px-4 py-3 bg-brown-800 border-b border-brown-700 z-50">
-        <TerritoryBreadcrumbs />
-        <MapLayerSwitcher />
-      </header>
+      {/* Main Navigation - visible on all pages */}
+      <MainNavigation />
+      
+      {/* Common Header - always visible (except on survey pages where we use our own header) */}
+      {!isSurveyPage && (
+        <header className="flex items-center justify-between px-4 py-3 bg-brown-800 border-b border-brown-700 z-50">
+          <TerritoryBreadcrumbs />
+          <MapLayerSwitcher />
+        </header>
+      )}
 
       {/* Main Content Area */}
       <main className="flex-1 relative overflow-hidden">
@@ -356,6 +369,19 @@ export const router = createBrowserRouter([
       {
         path: 'region/:regionId/agent/:agentId',
         element: <AgentView />,
+      },
+      // Survey routes
+      {
+        path: 'surveys',
+        element: <SurveysPage />,
+      },
+      {
+        path: 'results',
+        element: <ResultsPage />,
+      },
+      {
+        path: 'validation',
+        element: <ValidationPage />,
       },
       // Catch-all: redirect to country
       {
