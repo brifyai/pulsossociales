@@ -1,4 +1,4 @@
-import { RouterProvider } from 'react-router-dom';
+import { RouterProvider, useLocation } from 'react-router-dom';
 import { router } from './routes';
 import { ToastContainer } from 'react-toastify';
 import starImg from '/assets/star.svg';
@@ -10,6 +10,37 @@ import Button from './components/buttons/Button.tsx';
 import InteractButton from './components/buttons/InteractButton.tsx';
 import FreezeButton from './components/FreezeButton.tsx';
 import { MAX_HUMAN_PLAYERS } from '../convex/constants.ts';
+
+/**
+ * Footer component that conditionally renders based on route
+ * Hidden on country view (/) to avoid overlapping with map
+ * Shown on region and agent views where game controls make sense
+ */
+function GameFooter({ onHelpClick }: { onHelpClick: () => void }) {
+  const location = useLocation();
+  const isCountryView = location.pathname === '/';
+  
+  // Hide footer on country view to prevent visual overlap with map
+  if (isCountryView) {
+    return null;
+  }
+  
+  return (
+    <footer className="fixed bottom-0 left-0 right-0 flex items-center gap-3 p-4 flex-wrap pointer-events-none z-50 bg-gradient-to-t from-black/50 to-transparent">
+      <div className="flex gap-4 flex-grow pointer-events-auto">
+        <FreezeButton />
+        <MusicButton />
+        <Button href="https://github.com/a16z-infra/ai-town" imgUrl={starImg}>
+          Star
+        </Button>
+        <InteractButton />
+        <Button imgUrl={helpImg} onClick={onHelpClick}>
+          Help
+        </Button>
+      </div>
+    </footer>
+  );
+}
 
 /**
  * App - Main entry point for Pulso Social (formerly AI Town)
@@ -31,11 +62,14 @@ import { MAX_HUMAN_PLAYERS } from '../convex/constants.ts';
  * 2. Region (/region/:regionId): RegionSceneView - AI Town world for selected region
  * 3. Agent (/region/:regionId/agent/:agentId): AgentInspectorPanel - Overlay panel on top of region view
  */
-export default function App() {
+/**
+ * Inner app component that has access to router context
+ */
+function AppContent() {
   const [helpModalOpen, setHelpModalOpen] = useState(false);
   
   return (
-    <div className="relative min-h-screen font-body game-background overflow-hidden">
+    <>
       {/* 
         RouterProvider - Main application router
         Handles all navigation with real URLs
@@ -45,21 +79,10 @@ export default function App() {
       {/* 
         Footer - Original AI Town controls
         Fixed at bottom, overlays the router content
-        Preserved for backward compatibility
+        Hidden on country view (/) to prevent map overlap
+        Shown on region/agent views where game controls make sense
       */}
-      <footer className="fixed bottom-0 left-0 right-0 flex items-center gap-3 p-4 flex-wrap pointer-events-none z-50 bg-gradient-to-t from-black/50 to-transparent">
-        <div className="flex gap-4 flex-grow pointer-events-auto">
-          <FreezeButton />
-          <MusicButton />
-          <Button href="https://github.com/a16z-infra/ai-town" imgUrl={starImg}>
-            Star
-          </Button>
-          <InteractButton />
-          <Button imgUrl={helpImg} onClick={() => setHelpModalOpen(true)}>
-            Help
-          </Button>
-        </div>
-      </footer>
+      <GameFooter onHelpClick={() => setHelpModalOpen(true)} />
 
       {/* Help Modal */}
       <ReactModal
@@ -105,6 +128,14 @@ export default function App() {
       </ReactModal>
       
       <ToastContainer position="bottom-right" autoClose={2000} closeOnClick theme="dark" />
+    </>
+  );
+}
+
+export default function App() {
+  return (
+    <div className="relative min-h-screen font-body game-background overflow-hidden">
+      <AppContent />
     </div>
   );
 }

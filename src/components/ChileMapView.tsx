@@ -115,7 +115,7 @@ export default function ChileMapView({ onRegionSelect }: ChileMapViewProps) {
       </div>
 
       {/* Map Container */}
-      <div className="relative w-full h-full pt-24 pb-8 px-4">
+      <div className="relative w-full h-full pt-24 pb-32 px-4">
         {/* Chile Shape Container - optimized for vertical layout */}
         <div className="relative w-full h-full max-w-3xl mx-auto">
           
@@ -159,7 +159,7 @@ export default function ChileMapView({ onRegionSelect }: ChileMapViewProps) {
             ))}
           </div>
 
-          {/* Legend */}
+          {/* Legend - positioned to not overlap with southern regions */}
           <MapLegend activeLayer={activeLayer} />
         </div>
       </div>
@@ -385,6 +385,7 @@ function RegionTooltip({ region, activeLayer, x, y }: RegionTooltipProps) {
 
 /**
  * MapLegend - Enhanced legend for the current layer
+ * Positioned in top-left to avoid overlapping with southern regions
  */
 interface MapLegendProps {
   activeLayer: MapLayer;
@@ -394,7 +395,7 @@ function MapLegend({ activeLayer }: MapLegendProps) {
   const layerConfig = LAYER_CONFIGS[activeLayer];
   
   return (
-    <div className="absolute bottom-4 right-4 bg-slate-800/90 backdrop-blur-md rounded-xl p-4 border border-white/10 shadow-xl">
+    <div className="absolute top-4 left-4 bg-slate-800/90 backdrop-blur-md rounded-xl p-4 border border-white/10 shadow-xl max-w-[200px]">
       <div className="flex items-center gap-3 mb-3">
         <div className={`w-10 h-10 rounded-lg ${layerConfig.color} opacity-80 flex items-center justify-center text-xl`}>
           {layerConfig.icon}
