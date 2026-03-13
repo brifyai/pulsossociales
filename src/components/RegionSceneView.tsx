@@ -1,4 +1,4 @@
-import Game from './Game';
+import ConvexAwareGame from './ConvexAwareGame';
 import { TerritoryRegion } from '../types/territory';
 import { AgentSummary } from '../types/agent';
 import { useAgentSummariesByRegion } from '../hooks/useAgents';
@@ -128,9 +128,13 @@ export default function RegionSceneView({ region, onAgentSelect }: RegionSceneVi
               }}
             />
             
-            {/* Game Component */}
+            {/* Game Component - with Convex fallback */}
             <div className="absolute inset-0">
-              <Game />
+              <ConvexAwareGame 
+                region={region}
+                agents={agents}
+                onAgentSelect={onAgentSelect}
+              />
             </div>
           </div>
         </div>
