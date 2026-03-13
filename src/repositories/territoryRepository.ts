@@ -133,7 +133,7 @@ export async function getRegionById(id: string): Promise<TerritoryRegion | null>
       .from('territories')
       .select('*')
       .eq('id', id)
-      .single();
+      .maybeSingle();
 
     if (error) {
       console.warn(`[TerritoryRepository] Error al obtener región ${id}, usando mocks:`, error.message);
