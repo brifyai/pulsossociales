@@ -10,9 +10,13 @@ export default function MusicButton() {
   const [isPlaying, setPlaying] = useState(false);
 
   useEffect(() => {
-    if (musicUrl) {
-      sound.add('background', musicUrl).loop = true;
+    if (!musicUrl) return;
+    // Evitar registrar el sonido más de una vez
+    if (sound.exists('background')) {
+      // Si ya existe pero la URL cambió, remover y recrear
+      sound.remove('background');
     }
+    sound.add('background', musicUrl).loop = true;
   }, [musicUrl]);
 
   const flipSwitch = async () => {
