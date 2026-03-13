@@ -84,12 +84,14 @@ interface UseRegionReturn {
 
 export function useRegion(regionId: string | null): UseRegionReturn {
   const [region, setRegion] = useState<TerritoryRegion | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true); // Start as true to show loading immediately
   const [error, setError] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
     if (!regionId) {
       setRegion(null);
+      setLoading(false);
+      setError(null);
       return;
     }
 
@@ -103,6 +105,7 @@ export function useRegion(regionId: string | null): UseRegionReturn {
       const message = err instanceof Error ? err.message : 'Error desconocido';
       setError(message);
       console.error(`[useRegion] Error al obtener región ${regionId}:`, err);
+      setRegion(null);
     } finally {
       setLoading(false);
     }
