@@ -1,5 +1,5 @@
-import { createBrowserRouter, Navigate, Outlet, useParams, useNavigate } from 'react-router-dom';
-import { useEffect } from 'react';
+import { createBrowserRouter, Navigate, Outlet, useParams, useNavigate, useLocation } from 'react-router-dom';
+import { useEffect, useState } from 'react';
 import { useAppStore } from '../store/appStore';
 import { useRegion } from '../hooks/useTerritories';
 import ChileMapView from '../components/ChileMapView';
@@ -9,13 +9,126 @@ import TerritoryBreadcrumbs from '../components/TerritoryBreadcrumbs';
 import MapLayerSwitcher from '../components/MapLayerSwitcher';
 import { useAgentById } from '../hooks/useAgents';
 import { TerritoryRegion } from '../types/territory';
+import { ToastContainer } from 'react-toastify';
+import ReactModal from 'react-modal';
+import MusicButton from '../components/buttons/MusicButton.tsx';
+import Button from '../components/buttons/Button.tsx';
+import InteractButton from '../components/buttons/InteractButton.tsx';
+import FreezeButton from '../components/FreezeButton.tsx';
+import starImg from '/assets/star.svg';
+import helpImg from '/assets/help.svg';
+import { MAX_HUMAN_PLAYERS } from '../../convex/constants.ts';
+
+/**
+ * GameFooter - Footer with AI Town controls
+ * Hidden on country view (/) to avoid overlapping with map
+ */
+function GameFooter({ onHelpClick }: { onHelpClick: () => void }) {
+  const location = useLocation();
+  const isCountryView = location.pathname === '/';
+  
+  // Hide footer on country view to prevent visual overlap with map
+  if (isCountryView) {
+    return null;
+  }
+  
+  return (
+    <footer className="fixed bottom-0 left-0 right-0 flex items-center gap-3 p-4 flex-wrap pointer-events-none z-50 bg-gradient-to-t from-black/50 to-transparent">
+      <div className="flex gap-4 flex-grow pointer-events-auto">
+        <FreezeButton />
+        <MusicButton />
+        <Button href="https://github.com/a16z-infra/ai-town" imgUrl={starImg}>
+          Star
+        </Button>
+        <InteractButton />
+        <Button imgUrl={helpImg} onClick={onHelpClick}>
+          Help
+        </Button>
+      </div>
+    </footer>
+  );
+}
+
+/**
+ * HelpModal - Help dialog content
+ */
+function HelpModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
+  return (
+    <ReactModal
+      isOpen={isOpen}
+      onRequestClose={onClose}
+      style={modalStyles}
+      contentLabel="Help modal"
+      ariaHideApp={false}
+    >
+      <div className="font-body">
+        <h1 className="text-center text-6xl font-bold font-display game-title">Ayuda</h1>
+        <p className="mt-4">
+          Bienvenido a Pulso Social. Esta plataforma permite realizar encuestas sintéticas
+          con agentes de IA distribuidos por regiones de Chile.
+        </p>
+        <h2 className="text-4xl mt-6">Navegación</h2>
+        <p className="mt-2">
+          La aplicación tiene 3 niveles de navegación:
+        </p>
+        <ul className="list-disc ml-6 mt-2 space-y-1">
+          <li><strong>Nivel País (/):</strong> Mapa de Chile con todas las regiones. Haz click en una región para explorarla.</li>
+          <li><strong>Nivel Región (/region/:regionId):</strong> Vista del mundo AI Town para la región seleccionada. Observa a los agentes interactuar.</li>
+          <li><strong>Nivel Agente (/region/:regionId/agent/:agentId):</strong> Panel de inspección detallada de un agente específico. Se abre como panel lateral.</li>
+        </ul>
+        <h2 className="text-4xl mt-6">URLs Compartibles</h2>
+        <p className="mt-2">
+          Ahora puedes compartir enlaces directos:
+        </p>
+        <ul className="list-disc ml-6 mt-2 space-y-1">
+          <li><code>/</code> - Vista país completa</li>
+          <li><code>/region/metropolitana</code> - Región específica</li>
+          <li><code>/region/metropolitana/agent/agent-123</code> - Agente específico</li>
+        </ul>
+        <h2 className="text-4xl mt-6">Interactividad</h2>
+        <p className="mt-2">
+          En la vista de región, haz click en los agentes (botones circulares en el header)
+          para ver sus detalles. Usa los breadcrumbs para navegar entre niveles.
+        </p>
+        <p className="mt-4 text-brown-400">
+          Pulso Social soporta hasta {MAX_HUMAN_PLAYERS} humanos simultáneos.
+        </p>
+      </div>
+    </ReactModal>
+  );
+}
+
+const modalStyles = {
+  overlay: {
+    backgroundColor: 'rgb(0, 0, 0, 75%)',
+    zIndex: 100,
+  },
+  content: {
+    top: '50%',
+    left: '50%',
+    right: 'auto',
+    bottom: 'auto',
+    marginRight: '-50%',
+    transform: 'translate(-50%, -50%)',
+    maxWidth: '80%',
+    maxHeight: '80%',
+    overflow: 'auto',
+    border: '10px solid rgb(23, 20, 33)',
+    borderRadius: '0',
+    background: 'rgb(35, 38, 58)',
+    color: 'white',
+    fontFamily: '"Upheaval Pro", "sans-serif"',
+  },
+};
 
 /**
  * AppLayout - Common layout wrapper for all routes
  * 
- * Provides the common shell: header with breadcrumbs and layer switcher
+ * Provides the common shell: header with breadcrumbs, layer switcher, and footer
  */
 function AppLayout() {
+  const [helpModalOpen, setHelpModalOpen] = useState(false);
+  
   return (
     <div className="relative w-full h-screen flex flex-col bg-brown-900">
       {/* Common Header - always visible */}
@@ -28,6 +141,15 @@ function AppLayout() {
       <main className="flex-1 relative overflow-hidden">
         <Outlet />
       </main>
+      
+      {/* Footer - hidden on country view */}
+      <GameFooter onHelpClick={() => setHelpModalOpen(true)} />
+      
+      {/* Help Modal */}
+      <HelpModal isOpen={helpModalOpen} onClose={() => setHelpModalOpen(false)} />
+      
+      {/* Toast Container */}
+      <ToastContainer position="bottom-right" autoClose={2000} closeOnClick theme="dark" />
     </div>
   );
 }
